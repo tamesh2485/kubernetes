@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-path
+spec:
+  containers:
+  - image: busybox
+    name: host-path
+    command: ["sleep","3600"]
+    volumeMounts:
+    - mountPath: /hostvol
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    hostPath:
+      path: / 
