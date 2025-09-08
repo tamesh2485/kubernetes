@@ -1,0 +1,26 @@
+## Create ConfigMap using literal - 
+kubectl create configmap first-configmap --from-literal=key1=value1 --from-literal=key2=value2
+kubectl describe configmap first-configmap
+kubectl get configmap first-configmap -o yaml
+
+## Create ConfigMap from file - 
+cat large-file.txt
+key1=value1
+key2=value2
+key3=value3
+kubectl create configmap second-configmap --from-file=large-file.txt
+
+## Create ConfigMap from dir  -
+mkdir -pv configmap
+ 
+cat configmap/large-file1.txt
+key1=value1
+key2=value2
+key3=value3
+
+cat configmap/large-file1.txt
+key4=value4
+key5=value5
+key6=value6
+
+kubectl create configmap third-configmap --from-file=configmap
