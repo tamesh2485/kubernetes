@@ -1,0 +1,166 @@
+Notes-  
+ - ConfigMap is used to store non-sensitive data outside of pod/deployment manifest file
+ - If we modify the the ConfigMap, We don't need to restart the pod/deployment, it automatically gets updated in the pod. 
+
+## Create ConfigMap
+===============================
+controlplane ~ ✖ cat config.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: demo-configmap
+data:
+   DB_HOST: "172.31.10.30:3306"
+   DB_USER: "dbadmin"
+   DB_PASS: "db!2312$#"
+   APP_MODE: "production"
+   APP_CAPACITY: "100%"
+
+   large-data: |
+      This is Line 1
+      This is Line 2
+      This is Line 3
+
+controlplane ~ ➜  k create -f config.yaml 
+configmap/demo-configmap created
+
+controlplane ~ ➜  k get configmap/demo-configmap -o yaml 
+apiVersion: v1
+data:
+  APP_CAPACITY: 100%
+  APP_MODE: production
+  DB_HOST: 172.31.10.30:3306
+  DB_PASS: db!2312$#
+  DB_USER: dbadmin
+  large-data: |
+    This is Line 1
+    This is Line 2
+    This is Line 3
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-09-08T09:06:21Z"
+  name: demo-configmap
+  namespace: default
+  resourceVersion: "1891"
+  uid: 8b8b88b8-9ead-4543-8cf2-f24c4b5fa42e
+
+## Mount pod using VolumeMount - 
+===============================
+controlplane ~ ➜  cat configpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-pod
+spec:
+  containers:
+    - name: test-container
+      image: nginx
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+
+  volumes:
+    - name: config-volume
+      configMap:
+        name: demo-configmap
+
+controlplane ~ ➜  k exec -it  configmap-pod -- sh        
+production# pwd
+/etc/config
+# cat APP_CAPACITY && echo 
+100%
+# cat DB_HOST && echo 
+172.31.10.30:3306
+
+
+apiVersion: v1
+data:
+  APP_CAPACITY: 100%
+  APP_MODE: production
+  DB_HOST: 172.31.10.30:3306
+  DB_PASS: db!2312$#
+  DB_USER: modifieduser
+  large-data: |
+    This is Line 1
+    This is Line 2
+    This is Line 3
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-09-08T09:06:21Z"
+  name: demo-configmap
+  namespace: default
+  resourceVersion: "2899"
+  uid: 8b8b88b8-9ead-4543-8cf2-f24c4b5fa42e
+
+controlplane ~ ➜  k exec -it  configmap-pod -- sh  
+modifieduser# cat DB_USER && echo 
+modifieduser
+
+
+
+##############
+
+Part 2 - Fetching ConfigMap data as Env Variables
+==================================================
+
+controlplane ~ ✖ cat config.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: demo-configmap
+data:
+   DB_HOST: "172.31.10.30:3306"
+   DB_USER: "dbadmin"
+   DB_PASS: "db!2312$#"
+   APP_MODE: "production"
+   APP_CAPACITY: "100%"
+
+   large-data: |
+      This is Line 1
+      This is Line 2
+      This is Line 3
+
+controlplane ~ ✖ k get cm demo-configmap -o yaml 
+apiVersion: v1
+data:
+  APP_CAPACITY: 100%
+  APP_MODE: production
+  DB_HOST: 172.31.10.30:3306
+  DB_PASS: db!2312$#
+  DB_USER: dbadmin
+  large-data: |
+    This is Line 1
+    This is Line 2
+    This is Line 3
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-09-08T09:52:56Z"
+  name: demo-configmap
+  namespace: default
+  resourceVersion: "5871"
+  uid: 12ae0929-d2fa-41d7-ab0b-711ed1e5c87d
+
+  
+controlplane ~ ➜  cat envpod.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-env-pod
+spec:
+ containers:
+ - name: nginx-container
+   image: nginx
+   env:
+     - name: MODE_APP
+       valueFrom:
+         configMapKeyRef:
+           name: demo-configmap
+           key:  APP_MODE   
+
+controlplane ~ ✖ k get pod/configmap-env-pod
+NAME                READY   STATUS    RESTARTS   AGE
+configmap-env-pod   1/1     Running   0          7s
+
+controlplane ~ ➜  k exec -it configmap-env-pod -- sh 
+# echo $MODE_APP
+production
