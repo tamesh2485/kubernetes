@@ -1,0 +1,110 @@
+Immutable ConfigMap - It cannot be be updated once it is created. Once the configMap is created, we cannot modify the data or mark it as mutable again 
+
+We can only delete and recreate the configMap with new value. 
+
+If we are recreating , existing pods needs to be recreated as part of best practice. 
+
+cat immutableconfigmap.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: immutable-configmap
+data:
+  config.properties: |
+    APP_MODE=production
+    LOG_LEVEL=info
+immutable: true
+
+cat immutable-v2.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: immutable-configmap-v2
+immutable: true
+data:
+  config.properties: |
+    APP_MODE=production-V2
+    LOG_LEVEL=debug
+    
+kubectl create -f mutable-cm.yaml
+
+controlplane ~ ➜  k get cm immutable-configmap -o yaml 
+apiVersion: v1
+data:
+  config.properties: |
+    APP_MODE=production
+    LOG_LEVEL=info
+immutable: true
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-09-08T10:14:13Z"
+  name: immutable-configmap
+  namespace: default
+  resourceVersion: "1191"
+  uid: 5756a199-91f9-4a51-8963-0bf0e7fc6f7d
+
+controlplane ~ ➜  k get cm immutable-configmap-v2 -o yaml  
+apiVersion: v1
+data:
+  config.properties: |
+    APP_MODE=production-V2
+    LOG_LEVEL=debug
+immutable: true
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-09-08T10:14:40Z"
+  name: immutable-configmap-v2
+  namespace: default
+  resourceVersion: "1230"
+  uid: 5c4dc257-b02e-4e67-a07d-de3077a20932
+
+
+# cat app-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app-container
+          image: nginx
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/myapp/config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: immutable-configmap
+
+kubectl create -f app-deployment.yaml
+cd /etc/myapp/config/
+ls
+cat config.properties
+
+kubectl edit deployment my-app
+configMap:
+  name: immutable-configmap-v2
+
+controlplane ~ ✖  k get po 
+NAME                      READY   STATUS    RESTARTS   AGE
+my-app-66c68fd557-6drgg   1/1     Running   0          15s
+my-app-66c68fd557-zv7zt   1/1     Running   0          12s
+
+controlplane ~ ➜  k exec -it my-app-66c68fd557-6drgg -- sh 
+# cd /etc/myapp/config/
+# cat config.properties
+APP_MODE=production-V2
+LOG_LEVEL=debug
