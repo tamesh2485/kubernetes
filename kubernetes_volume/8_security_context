@@ -1,0 +1,59 @@
+runAsUser - for user id 
+runAsGroup - for group id 
+fsGroup - it doesn't work with all volume mounts esp host path . If is for group mentioned for volume 
+
+
+controlplane ~ ✖ cat securitycontext.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fsgroup-pod
+spec:
+ securityContext:
+   runAsUser: 1000
+   runAsGroup: 2000
+   fsGroup: 3000
+ volumes:
+  - name: host-root
+    emptyDir: {}
+ containers:
+ - name: demo-container
+   image: busybox:latest
+   command: ["sleep", "36000"]
+   volumeMounts:
+    - name: host-root
+      mountPath: /host
+
+controlplane ~ ➜  k get po -o wide 
+NAME          READY   STATUS    RESTARTS   AGE   IP           NODE     NOMINATED NODE   READINESS GATES
+fsgroup-pod   1/1     Running   0          17s   172.17.1.2   node01   <none>           <none>
+
+controlplane ~ ➜  k exec -it fsgroup-pod -- sh 
+~ $ id
+uid=1000 gid=2000 groups=2000,3000
+~ $ cd /host 
+/host $ ls
+/host $ touch abc
+/host $ ls -l 
+total 0
+-rw-r--r--    1 1000     3000             0 Sep  9 10:58 abc
+
+/tmp $ pwd
+/tmp
+/tmp $ touch pp
+/tmp $ ls -l /tmp/pp
+-rw-r--r--    1 1000     2000             0 Sep  9 10:59 /tmp/pp
+
+############
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo-4
+spec:
+  containers:
+  - name: sec-ctx-4
+    image: gcr.io/google-samples/hello-app:2.0
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN", "SYS_TIME"]
