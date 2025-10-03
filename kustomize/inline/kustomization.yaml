@@ -25,3 +25,14 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
+
+## Add label
+patches:
+  - target:
+      kind: Deployment
+      name: nginx-deployment
+
+    patch: |-
+      - op: add
+        path: /metadata/labels/env
+        value: dev
