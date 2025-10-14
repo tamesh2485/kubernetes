@@ -1,0 +1,359 @@
+# Task1 : Create a new HorizontalPodAutoscaler (HPA) named apache-server in the autoscale namespace.Target the Deployment apache-server. 
+# Set target CPU utilization to 50%, minPods=1, maxPods=4. Also set the downscale-stabilization window to 30 seconds. 
+
+controlplane:~$ k get deploy  apache-server  -n autoscale  
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+apache-server   1/1     1            1           3m57s
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: apache-server
+  namespace: autoscale
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: apache-server
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  behavior:
+    scaleDown:
+        stabilizationWindowSeconds: 30
+
+controlplane:~$ k get hpa -n autoscale  -w 
+NAME            REFERENCE                  TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+apache-server   Deployment/apache-server   cpu: 37%/50%   1         4         3          17s
+
+### Task 2:
+
+Create a new Ingress resource as follows:
+* Name: echo
+* Namespace: sound-repeater
+* Exposing Service: echoserver-service on http://example.org/echo  using Service port 8080
+
+The availability of Service echo-server can be checked using the following command, which should return 200:
+
+curl -o /dev/null -s -w '%{http_code}\n' http://example.org/echo
+
+
+controlplane:~$ k config set-context  --current  --namespace sound-repeater 
+Context "kubernetes-admin@kubernetes" modified.
+
+Usage:
+  kubectl create ingress NAME --rule=host/path=service:port[,tls[=secret]]  [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+controlplane:~$ k get ingressclasses.networking.k8s.io -A 
+NAME    CONTROLLER             PARAMETERS   AGE
+nginx   k8s.io/ingress-nginx   <none>       111s
+
+ kubectl -n sound-repeater  create ingress echo --class=nginx --rule=example.org/echo=echoserver-service:8080 --dry-run=client -o yaml > 2.yaml 
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: echo
+  namespace: sound-repeater
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: echoserver-service
+            port:
+              number: 8080
+        path: /echo
+        pathType: Prefix
+status:
+  loadBalancer: {}
+
+controlplane:~$ k get ing   
+NAME   CLASS   HOSTS         ADDRESS   PORTS   AGE
+echo   nginx   example.org             80      6s
+controlplane:~$ curl -o /dev/null -s -w '%{http_code}\n' http://example.org/echo
+200
+
+
+
+
+Context 3:
+
+Your task is to prepare a Linux system for Kubernetes. Docker is already installed, but you need to configure it for kubeadm.
+
+Task:
+
+Complete these tasks to prepare the system for Kubernetes:
+* Install the Debian package ~/cri-dockerd_0.3.9.3-0.ubuntu-jammy_amd64.deb
+Debian packages are installed using dpkg
+* Enable and start the cri-docker service
+
+Configure these system parameters:
+* Set net.bridge.bridge-nf-call-iptables to 1
+* Set net.ipv6.conf.all.forwarding to 1
+* Set net.ipv4.ip_forward to 1
+* Set net.netfilter.nf_conntrack_max to 131072
+
+Ensure these system parameters persist after a system restart and are applied to the running system. Failure to do so may result in a reduced score.
+
+controlplane:~$ pwd   
+/root
+controlplane:~$ ls -l cri-dockerd_0.3.9.3-0.ubuntu-jammy_amd64.deb  
+-rw-r--r-- 1 root root 11108590 Oct 14 18:38 cri-dockerd_0.3.9.3-0.ubuntu-jammy_amd64.deb
+controlplane:~$ dpkg -i cri-dockerd_0.3.9.3-0.ubuntu-jammy_amd64.deb  
+(Reading database ... 140081 files and directories currently installed.)
+Preparing to unpack cri-dockerd_0.3.9.3-0.ubuntu-jammy_amd64.deb ...
+Unpacking cri-dockerd (0.3.9~3-0~ubuntu-jammy) over (0.3.9~3-0~ubuntu-jammy) ...
+Setting up cri-dockerd (0.3.9~3-0~ubuntu-jammy) ...
+controlplane:~$ systemctl  restart cri-docker 
+controlplane:~$ systemctl   enable  cri-docker 
+controlplane:~$ systemctl   status  cri-docker 
+● cri-docker.service - CRI Interface for Docker Application Container Engine
+     Loaded: loaded (/usr/lib/systemd/system/cri-docker.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2025-10-14 18:39:49 UTC; 12s ago
+TriggeredBy: ● cri-docker.socket
+       Docs: https://docs.mirantis.com
+   Main PID: 23772 (cri-dockerd)
+      Tasks: 8
+     Memory: 8.7M (peak: 17.7M)
+        CPU: 199ms
+     CGroup: /system.slice/cri-docker.service
+             └─23772 /usr/bin/cri-dockerd --container-runtime-endpoint fd://
+
+
+
+controlplane:/etc/sysctl.d$ cat /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv6.conf.all.forwarding = 1
+net.ipv4.ip_forward = 1
+net.netfilter.nf_conntrack_max = 131072
+controlplane:/etc/sysctl.d$ sysc
+syscount-bpfcc  syscount.bt     sysctl          
+controlplane:/etc/sysctl.d$ sysctl --system 
+
+controlplane:/etc/sysctl.d$ sysctl net.bridge.bridge-nf-call-iptables
+net.bridge.bridge-nf-call-iptables = 1
+controlplane:/etc/sysctl.d$ sysctl net.ipv6.conf.all.forwarding
+net.ipv6.conf.all.forwarding = 1
+
+## Context:
+
+You manage a WordPress application. Some Pods are not starting because resource requests are too high.
+
+Task 4 :
+
+A WordPress application in the relative-fawn namespace consists of:
+* A WordPress Deployment with 3 replicas.
+
+Adjust all Pod resource requests as follows:
+* Divide node resources evenly across all 3 Pods
+* Give each Pod a fair share of CPU and memory
+* Add enough overhead to keep the node stable
+
+Use the exact same requests for both containers and init containers.
+
+You are not required to change any resource limits.
+
+It may help to temporarily scale the WordPress Deployment to 0 replicas while updating the resource requests. 
+
+After updates, confirm.
+* WordPress keeps 3 replicas
+* All Pods are running and ready
+
+
+
+## Task 7 :
+
+First, create a new StorageClass named local-path for an existing provisioner named rancher.io/local-path.
+Set the volume binding mode to WaitForFirstConsumer.
+
+Not setting the volume binding mode or setting it to anything other than WaitForFirstConsumer may result in a reduced score.
+
+Next, configure the StorageClass local-path as the default StorageClass.
+
+Do not modify any existing Deployments or PersistentVolumeClaims. Failure to do so may result in a reduced score.
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: rancher.io/local-path
+#reclaimPolicy: Delete # default value is Delete
+#allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+
+controlplane:~$ k get sc 
+NAME                   PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-path (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  2s
+controlplane:~$ k get sc local-path -o yaml 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  creationTimestamp: "2025-10-14T18:49:18Z"
+  name: local-path
+  resourceVersion: "7182"
+  uid: 5e87b18b-8a11-4270-bf8e-84b33c03384b
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+
+## Task 12 :
+
+Migrate an existing web application from Ingress to Gateway API. You must maintain HTTPS access.
+
+A GatewayClass named nginx is installed in the cluster.
+
+First, create a Gateway named web-gateway with hostname gateway.web.k8s.local that maintains the existing TLS and listener configuration from the existing Ingress resource named web.
+
+Next, create an HTTPRoute named web-route with hostname gateway.web.k8s.local that maintains the existing routing rules from the current Ingress resource named web.
+
+You can test your Gateway API configuration with the following commands:
+  curl -k https://gateway.web.k8s.local
+  # Or strict TLS using the cert extracted from the Secret:
+  curl --cacert /tmp/gateway-web.crt https://gateway.web.k8s.local
+
+Finally, delete the existing Ingress resource named web.
+
+controlplane:~$ k get ing 
+NAME   CLASS   HOSTS                   ADDRESS   PORTS     AGE
+web    nginx   gateway.web.k8s.local             80, 443   36s
+controlplane:~$ k get ingressclasses.networking.k8s.io 
+NAME    CONTROLLER             PARAMETERS   AGE
+nginx   k8s.io/ingress-nginx   <none>       99s
+controlplane:~$ k get ingress web -o yaml 
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{"nginx.ingress.kubernetes.io/ssl-redirect":"true"},"name":"web","namespace":"default"},"spec":{"ingressClassName":"nginx","rules":[{"host":"gateway.web.k8s.local","http":{"paths":[{"backend":{"service":{"name":"web","port":{"number":80}}},"path":"/","pathType":"Prefix"}]}}],"tls":[{"hosts":["gateway.web.k8s.local"],"secretName":"tls-secret"}]}}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  creationTimestamp: "2025-10-14T18:57:21Z"
+  generation: 1
+  name: web
+  namespace: default
+  resourceVersion: "5421"
+  uid: aee64ac5-3151-4e4e-9caf-a8593f72784c
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gateway.web.k8s.local
+    http:
+      paths:
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - gateway.web.k8s.local
+    secretName: tls-secret
+status:
+  loadBalancer: {}
+
+controlplane:~$ k get gatewayclasses.gateway.networking.k8s.io  
+NAME    CONTROLLER                                   ACCEPTED   AGE
+nginx   gateway.nginx.org/nginx-gateway-controller   True       4m25s
+controlplane:~$ k get secrets  
+NAME         TYPE                DATA   AGE
+tls-secret   kubernetes.io/tls   2      4m27s
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: web-gateway
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: https
+    port: 443
+    protocol: HTTPS
+    hostname: "gateway.web.k8s.local"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: tls-secret
+
+controlplane:~$ k create -f gtw.yaml  
+gateway.gateway.networking.k8s.io/web-gateway created
+controlplane:~$ k get gtw 
+NAME          CLASS   ADDRESS   PROGRAMMED   AGE
+web-gateway   nginx             True         10s
+
+controlplane:~$ cat http.yaml  
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: web-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: web-gateway
+    sectionName: https
+    namespace: default
+  hostnames:
+  - gateway.web.k8s.local
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: web
+      port: 80
+
+
+controlplane:~$ k get httproutes.gateway.networking.k8s.io 
+NAME        HOSTNAMES                   AGE
+web-route   ["gateway.web.k8s.local"]   26s
+
+controlplane:~$  curl -k https://gateway.web.k8s.local
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+controlplane:~$ k delete ing web 
+ingress.networking.k8s.io "web" deleted
