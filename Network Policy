@@ -1,0 +1,198 @@
+We have ingress [ from ] and Egress [ To ] .  
+
+ OR -     ...
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          user: alice
+    - podSelector:
+        matchLabels:
+          role: client
+  ...
+
+
+
+AND -     ...
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          user: alice
+      podSelector:
+        matchLabels:
+          role: client
+  ...
+
+
+Defaut ingress deny policy - 
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: default
+spec:
+  podSelector: {} #### Any pod 
+  policyTypes:
+  - Ingress
+
+
+Defaut Egress  deny policy - 
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+
+
+####
+
+1 - Understanding pod selector - 
+
+1a. The below example will select any pods in the namespace production
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: production 
+spec:
+  podSelector: {}
+  
+1b. The below example will select pods with label role = database
+  
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: production 
+spec:
+  podSelector:
+    matchLabels:
+      role: database
+  
+2 - policy Type - 
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: production 
+spec:
+  podSelector: {}
+  
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  
+Scenerio - Network policy to deny ingress/egress traffic for pods  in production namespace
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: Example1
+  namespace: production
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  
+Scenerio - Allow ingress but block Egress 
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: Example2
+spec:
+  podSelector: {}
+  ingress:
+  - {}
+  policyTypes:
+  - Ingress
+  - Egress
+  
+Scenerio - Blocks all ingress & egress to pod with role=suspicious
+  
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: Example3
+spec:
+  podSelector:
+	matchLabels:
+	  role: suspicious
+  policyTypes:
+  - Ingress
+  - Egress
+  
+Scenerio 4 [ pod selector ] -All Pods with label of role=app to connect to pods with labels of role=database 
+
+We have 3 pods - 
+app-pod - role=app
+db-pod - role=database
+random-pod - role=random-pod
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: example4
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      role: database
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: app
+
+
+Scenerio 5 [ NameSpace selector ] - Allow pods from security namespace to connect to pods in prod namespace 
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: example5
+  namespace: prod
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+           kubernetes.io/metadata.name: security
+  policyTypes:
+  - Ingress
+
+Scenerio 6  [ipBlock]- Allow pods from production namespace to connect to only 8.8.8.8 IP address outbound 
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: example6
+  namespace: production
+spec:
+  podSelector: {}
+  
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 8.8.8.8/32
+  policyTypes:
+  - Egress
