@@ -4,6 +4,33 @@ If we need a new resources that is not present in k8s cluster, we can do it by e
 Custom Resource - It is the instance of CRD. It extends the K8s API It is an extension of the Kubernetes API that is not necessarily available in a default Kubernetes installation.  Custom Resource Controller- Manages / Monitors the lifecycle of CR. Like we have deployment conroller for deployment, node controller for node.   Once we create the Custom Resource, K8s does the  validation of the  the resources through CRD.  Flow -   DevOPS creates the CRD  users / Developer create the CR  K8s does the validation of the resource using CRD DevOPS also creates Custom controller that manages / monitors the lifecycle of the CR and ensures the destired state is maintained.   Follow - https://learn.kodekloud.com/user/courses/udemy-labs-certified-kubernetes-administrator-with-practice-tests/module/a079f065-60ca-422a-9045-750ae56550bd/lesson/dca6ed68-e26e-4af9-98e6-366d640bd078 
  Scenerio 1- Create CR from existing CRD -   Create CRD - 
 
+
+• If we need a new resources that is not present in k8s cluster, we can do it by extending the capabilities of API and adding it to K8s Cluster. 
+
+
+• Main objects are - 
+
+	1. Custom Resource Defination - It is a definition file/ template  that has all the fields that a resources should have, How a resources should be validated 
+
+	2. Custom Resource - It is the running instance of CRD. It extends the K8s API. It is an extension of the Kubernetes API that is not necessarily available in a default Kubernetes installation.
+
+	3. Custom Resource Controller- Manages / Monitors the lifecycle of CR. Like we have deployment controller for deployment, node controller for node. 
+
+Once we create the Custom Resource, K8s does the  validation of the  the resources through CRD.
+
+• CustomCrontroller is written in Golang
+
+• Flow - 
+
+DevOPS creates the CRD 
+users / Developer create the CR 
+K8s does the validation of the resource using CRD
+DevOPS also creates Custom controller that manages / monitors the lifecycle of the CR and ensures the destired state is maintained. 
+
+
+
+Link - https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/ 
+Custom Resource - 
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
