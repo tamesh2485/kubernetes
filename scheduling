@@ -1,0 +1,302 @@
+Taints are set on nodes , Tolerations are set on pod
+k taint node node-name key=value:taint-effect
+NoSchedule - pods will not schedule on the nodes. Existing pod with not evict 
+PreferNoSchedule - s/w will try to avoid placing a pod on the node but not guaranteed
+NoExecute - new pods will not be scheduled on the nodes & existing ones on the nodes if any will be evicted if they dont tolerate the taint
+Taints & Tolerations doesn't tell the pod to goto a particular node infact it tells the node to accept pods with certain toleration. If we want to restrict pod to particular nodes then we will use node affinity
+A taint is  setup on Mater node as NoSchedule to avoid scheduling of applications on master node
+
+
+
+NedeSelector - To apply NodeSelector , we need to label the node with kep value pair and then on pod file, we specify the key value unde NodeSelector.
+NodeSelector can be applied for complex situation / when we  have mode that one scenerio
+
+NodeAffinity - Ensures pods are hosted in particular nodes. provides advanced feature .
+
+A pod cannot consume more than cpu mentioned in limit - it will throw throttle error
+However, a pod can consume more memory to the memory limit mentioned, If the pod continues to consume more memory, the pod will terminate with OOM error.
+
+If we want to restrict cpu/mem at cluster level, we use Resource quota & at the namespace level we use limit range
+
+
+Daemon Sets - it runs one copy of your pod across the cluster , 1 copy of the pod is always running accross all the nodes ,
+It is used for monitoring solution / logs viewer / log collector
+kubeproxy is an use case of daemon set .
+DeamonSet defination file is similar to replicaset , just kind value will be DaemonSet and no replicas need to be mentioned
+
+
+++++++++
+Dir of Static Pod - 
+/etc/kubernetes/manifests 
+
+Path of static Pod - 
+controlplane /var/lib/kubelet ➜  cat /var/lib/kubelet/config.yaml  | grep -i static
+staticPodPath: /etc/kubernetes/manifests
+
+kubelet checks the files under /etc/kubernetes/manifests  oeriodically and creates the pod . This is done without the invention of kube apiserver & this is called Static pod 
+
+Static pod example - Please note there is name of the node 
+controlplane ~ ➜  kubectl  get po -A 
+NAMESPACE      NAME                                   READY   STATUS    RESTARTS   AGE
+kube-system    etcd-controlplane                      1/1     Running   0          5m36s
+kube-system    kube-apiserver-controlplane            1/1     Running   0          5m34s
+kube-system    kube-controller-manager-controlplane   1/1     Running   0          5m40s
+kube-system    kube-scheduler-controlplane            1/1     Running   0          5m39s
+
+We can check by running $ docker ps 
+
+Static Pod - 
+Created by kubelet 
+Deploy control plane component as Static pod 
+
+DaemonSet -
+Created by kube-api server
+Deploy monitoring Agents , logging agents on Nodes 
+
+
+Create a pod definition file in the manifests folder. To do this, run the command:
+kubectl run  --image=busybox static-busybox --dry-run=client -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
+ 
+
+controlplane ~ ➜  cat static-busybox.yaml   
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: static-busybox
+  name: static-busybox
+spec:
+  containers:
+  - command:
+    - sleep
+    - "1000"
+    image: busybox:1.28.4
+    name: static-busybox
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}
+
+
+Identify static pod on worker nodes-  
+
+Identify which node the static pod is created on, ssh to the node and delete the pod definition file.
+If you don't know the IP of the node, run the kubectl get nodes -o wide command and identify the IP.
+Then, SSH to the node using that IP. For static pod manifest path look at the file /var/lib/kubelet/config.yaml on node01
+
+
+Label - 
+adding meaningful identity to the k8s object 
+
+# k label node node01 type=gpu 
+# k label po nginx type=gpu 
+# k get po nginx --show-labels 
+
+# k label pod nginx app=testing 
+
+Equity based = equal to not equal to 
+set based labels - in , notin, exists 
+
+List pods whose label is not app=nginx
+# k get po -l app!=nginx 
+
+# k create deploy bootcamp  --image=nginx --replicas=3
+# k get po -l 'app in (test,bootcamp)'
+
+Namespaces - 
+It is grouping of resources together 
+
+# k create ns abc 
+# k run nginx --image=nginx -n abc 
+# k get po on abc 
+k exec -it nginx -- sh 
+
+By Default, pod can communicate with other namespaces pods 
+
+# k create ns bootcamp 
+# k create deploy demo -n bootcamp --image=nginx 
+
+# k create ns  dev 
+# k create deploy demo -n dev --image=nginx 
+
+# k config set-context --current --namespace=dev 
+
+By default also we have namespaces. 
+1 such is kubenodelease - it checks heartbit of the node 
+
+ResourceQuota & Limit Range
+
+create the resourcequota and then limitrange then create a pod.
+# k create ns example-namespace 
+
+# vim resourcequota.yaml 
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: example-quota
+  namespace: example-namespace
+spec:
+  hard:
+    requests.cpu: "500m" # total amount of CPU that can be requested
+    requests.memory: "200Gi" # total amount of memory that can be requested
+    limits.cpu: "1" # total amount of CPU limit across all pods
+    limits.memory: 400Gi # total amount of memory limit across all pods
+    pods: "10" # total number of pods that can be created
+
+# k create -f  resourcequota.yaml  
+# k get ResourceQuota -A 
+
+
+# vim limirange.yaml 
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: example-limitrange
+  namespace: example-namespace
+spec:
+  limits:
+  - type: Pod
+    max:
+      cpu: "2" # max CPU per Pod
+      memory: 2Gi # max memory per Pod
+    min:
+      cpu: "200m" # min CPU per Pod
+      memory: 200Mi # min memory per Pod
+  - type: Container
+    default:
+      cpu: "100m" # default CPU request for any container
+      memory: 100Mi # default memory request for any container
+    defaultRequest:
+      cpu: "100m" # default CPU limit for any container
+      memory: 100Mi # default memory limit for any container
+    max:
+      cpu: "1" # max CPU per Container
+      memory: 1Gi # max memory per Container
+    min:
+      cpu: "100m" # min CPU per Container
+      memory: 100Mi # min memory per Container
+
+Pod Scheduling Readiness 
+Pods were considered ready for scheduling once created. Kubernetes scheduler does its due diligence to find nodes to place all pending Pods. However, in a real-world case, some Pods may stay in a "miss-essential-resources" state for a long period. These Pods actually churn the scheduler (and downstream integrators like Cluster AutoScaler) in an unnecessary manner.
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  schedulingGates:
+  - name: example.com/foo
+  - name: example.com/bar
+  containers:
+  - name: pause
+    image: registry.k8s.io/pause:3.6
+
+NAME       READY   STATUS            RESTARTS   AGE
+test-pod   0/1     SchedulingGated   0          7s
+
+To inform scheduler this Pod is ready for scheduling, you can remove its schedulingGates entirely by reapplying a modified manifest:
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - name: pause
+    image: registry.k8s.io/pause:3.6
+
+Topology Spread - How pods are spread across cluster , pods are distributed evenly using topology spread
+
+maxSkew describes the degree to which Pods may be unevenly distributed. It must be greater than 0 & should be an integer
+topologyKey is the key of node labels. Nodes that have a label with this key and identical values are considered to be in the same topology. 
+
+• whenUnsatisfiable indicates how to deal with a Pod if it doesn't satisfy the spread constraint:
+	○ DoNotSchedule (default) tells the scheduler not to schedule it.
+	○ ScheduleAnyway tells the scheduler to still schedule it while prioritizing nodes that minimize the skew.
+• labelSelector is used to find matching Pods. To find other matching pods 
+
+# k cordon node01 [ It will disable scheduling , will not schedule new pods ] 
+
+Priority Class - 
+# k get priorityclass -A 
+Used for mission critical apps 
+
+
+Work Load & Scheduling - 
+
+nodeSelector - Where your pods can be scheduled based on labels of nodes 
+nodeName
+nodeAffinity -  Where your pods can be scheduled based on labels of nodes  
+Taints&Toleration
+
+nodeAffinity -  Where your pods can be scheduled based on labels of nodes  , similar to node selector
+- requiredDuringSchedulingIgnoredDuringExecution - HARD
+- preferredDuringSchedulingIgnoredDuringExecution - TRY
+
+Admission Controllers  - 
+
+kubectl. -   kubeapi server. -  Create pod 
+
+When the request to create a pod is generated , it goes through an authentication process which is done through certificate mentioned in file  [ /root/.kube/config ] . It check whether the user is valid or not
+
+once authentication is completed, it goes through authorization process , We check whether the user has permission to perform the request access - which is done through RBAC 
+
+With RBAC - We can control access for create pods / delete pods . RBAC  controls things at the api level. IT doesn't go beyond 
+
+Some actions as mentioned below cannot be managed using RBAC , That’s where Admission controllers come into play 
+Only permit from certain registry 
+We don’t want to use latest tag 
+we don’t want pod to run as root user 
+metadata should contain labels 
+
+Admission Controllers help us implement better security measures to manage k8s cluster 
+
+Number of Admission Controllers - 
+AlwaysPullImages - Ensures that everytime a pod is created, image is pulled 
+DefaultStorageClass - This admission controller observes creation of PersistentVolumeClaim objects that do not request any specific storage class and automatically adds a default storage class to them.
+EventRateLimit - This admission controller mitigates the problem where the API server gets flooded by requests to store new Events. Can set up a limit to api server so that api server doesn't get flooded with requests 
+
+NamespaceExists -  If the namespace referenced from a request doesn't exist, the request is rejected.
+
+NamespaceAutoProvision - If we try to create pod in a namespace that doesn't exist, if NamespaceAutoProvision  admission controller is enabled, it will auto create the namespace and schedule the pod 
+
+View Enabled Admission Controllers - 
+kube-apiserver -h | grep enable-admission-plugins
+
+For kubeadm setup - 
+# kubectl exec kube-apiserver-controlplane -n kube-system -- kube-apiserver -h | grep enable-admission-plugins
+
+# ps -ef | grep kube-apiserver | grep admission-plugins
+
+Enable Admission Controllers - 
+kube-apiserver.service file-
+--enable-admission-plugins=NodeRestrictions,NamespaceAutoprovision
+--disable-admission-plugins=DefaultStorageClass
+
+in kubeadm setup - 
+/etc/kubernetes/manifests/kube-apiserver.service
+- --enable-admission-plugins=NodeRestrictions,NamespaceAutoprovision
+
+kube-apiserver --enable-admission-plugins=NamespaceLifecycle,LimitRanger ..
+kube-apiserver --disable-admission-plugins=PodNodeSelector,AlwaysDeny ...
+
+Note that the NamespaceExists and NamespaceAutoProvision admission controllers are deprecated and now replaced by NamespaceLifecycle admission controller.
+The NamespaceLifecycle admission controller will make sure that requests
+to a non-existent namespace is rejected and that the default namespaces such as
+default, kube-system and kube-public cannot be deleted.
+
+Validating Admission Controller - NamespaceExists,  They are those, that validate the request & allow / deny 
+Mutating Admission Controller - DefaultStorageClass ,  They are those, that change the request . When we create a pvc with no storageclass assigned, by default it gets assigned to default storageclass
+
+There can be admission controllers that can do both validate and mutate. 
+
+
+Note- Generally mutating Admission Controller  are invoked first followed by Validating Admission Controller . This is so cause any change made by thr mutating controller can later be validated by Validating Admission Controller 
+
+To support Extenal mutating controllers, we have MutatingAdmissionWebhook  &  ValidatingAdmissionWebhook 
+
+
