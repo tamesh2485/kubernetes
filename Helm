@@ -1,0 +1,520 @@
+
+
+###########################
+Helm Defination?
+###########################
+Helm is considered to be a package manager for k8s which allows us to install k8s controllers and third party applications 
+using helm, we can install, update, uninstall, bundle applications as helm chart so that anyone outside org can use it 
+
+###########################
+Helm Chart ?
+###########################
+chart is bundle/package of your application , chars are stored in repository. A chart is a helm package. It Contains resource definitions necessary to run application, tool , service etc
+
+###########################
+Helm Repo ?
+###########################
+Helm repository is a collection of chats, Charts are stored in helm repo 
+
+###########################
+Helm Release?
+###########################
+Helm Release is a running instance of helm chart. It is like a snapshot, every change made is stored 
+
+###########################
+Install Helm 
+###########################
+https://helm.sh/docs/intro/quickstart/
+
+
+############################
+GIT Links To Follow
+############################
+1. https://github.com/iam-veeramalla/helm-zero-to-hero/
+2. https://github.com/zealvora/certified-kubernetes-administrator/blob/master/Domain%203%20-%20Services%20and%20Networking/helm-crds.md
+3. https://github.com/kubesimplify/cka-certification/blob/main/episode-6/scenairo_helm.md
+
+Steps - 
+1. Add repo 
+2. install the package 
+
+###################
+See curent context -
+###################
+kubectl config current-context 
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm search repo bitnami  [ to see the packages in bitnami ] 
+helm search repo bitnami | grep nginx 
+helm install my-nginx bitnami/nginx 
+
+helm uninstall my-nginx  
+
+###################
+Create Chart 
+###################
+
+mkdir -pv best-commerce/{payments,shipping}
+cd best-commerce 
+helm create payments
+helm create shipping 
+
+controlplane ~/helm-repo ✖ helm create -h 
+
+This command creates a chart directory along with the common files and
+directories used in a chart.
+
+For example, 'helm create foo' will create a directory structure that looks
+something like this:
+
+    foo/
+    ├── .helmignore   # Contains patterns to ignore when packaging Helm charts.
+    ├── Chart.yaml    # Information about your chart / metadata 
+    ├── values.yaml   # The default values for your templates ,  for making any customisation to the template [ replicas, resource limit ] 
+    ├── charts/       # Charts that this chart depends on
+    └── templates/    # The template files ,  collection of yaml files [ deployment, service , cm etc ] that we need to deploy 
+        └── tests/    # The test files
+
+
+### Create packages /chart 
+cd best-commerce 
+helm package shipping
+helm package payments
+
+###  Create index 
+cd best-commerce 
+helm repo index . 
+
+################################
+passing variables value 
+################################
+helm show values chart 
+
+
+################################
+skipping crds 
+###############################
+https://github.com/zealvora/certified-kubernetes-administrator/blob/master/Domain%203%20-%20Services%20and%20Networking/helm-crds.md
+
+
+helm repo add argo https://argoproj.github.io/argo-helm
+
+helm install my-argo-cd argo/argo-cd --version 7.8.23 --skip-crds --dry-run 
+
+helm install my-argo-cd argo/argo-cd --version 7.8.23 --skip-crds --dry-run | grep CustomResourceDefinition
+
+helm install my-argo-cd argo/argo-cd --version 7.8.23 --set crds.install=false --dry-run | grep CustomResourceDefinition
+
+helm template my-argo-cd argo/argo-cd --set crds.install=false --version 7.8.23 > argo-no-crd.yaml
+
+################################
+# HELM Commands 
+################################
+$ helm version 
+$ helm search hub wordpress [ Search from artifact ] 
+$ helm search repo wordpress [ Search from repo  ]
+$ helm search repo wordpress --versions [ Search from repo with versions   ]
+$ helm repo list 
+$ helm repo update 
+$ helm repo add bitnami <link>  [ Add repo ] 
+   $ helm repo add bitnami https://charts.bitnami.com/bitnami
+$ helm install [NAME] [CHART] [flags] [ installation ] 
+   $ helm install amaze-surf bitnami/apache 
+$ helm uninstall [NAME] 
+   $ helm uninstall happy-browse 
+$ helm repo remove repo_name 
+   $ helm repo remove hashicorp 
+$ helm history RELEASE_NAME [ To see the revisions ]
+   $ helm history dazzling-web
+   
+	$ helm search repo nginx --versions 
+$ helm upgrade [RELEASE] [CHART] [flags]
+   $ helm upgrade dazzling-web bitnami/nginx --versions 18.3.6 
+$  helm rollback <RELEASE> [REVISION] 
+   $ helm rollback dazzling-web 3 
+# helm template my-argo-cd argo/argo-cd --set crds.install=false  --version 7.8.23 > agro.yaml 
+
+# helm get manifest RELEASE_NAME [ To see the code of the release ] 
+
+#############
+Show Values
+#############
+
+$ helm show values traefik/traefik | grep -i -A5 gateway
+  kubernetesGateway:
+    # -- Enable traefik experimental GatewayClass CRD
+    enabled: false
+  # -- Enable traefik experimental plugins
+  plugins: {}
+  # demo:
+  #   moduleName: github.com/traefik/plugindemo
+
+
+
+Difference b/n helm 2 & helm 3 - 
+
+Helm 2 was a client server architecture & used tiller . Tiller is the middle man. It had security concerns 
+Tiller was running in god mode , it had all access. It was able to make any changes in the k8s cluster. 
+
+Tiller was sitting between us and k8s, it was creating complexity and security concerns. It had privileges to do everything. 
+
+Once RBAC/ CRD [ Custom Resource Defination ] came to picture, need for tiller  has gone  / removed in helm 3. 
+
+
+Helm 3 - Tiller is removed , RBAC got introduced, more security 
+
+3 - Way Strategic Merge patch -  helm 2 misses it , helm 3 has it. 
+Previous chart / current chart / live state - helm 3 check all of them 
+
+
+New revision is created whenever we do any action such as install/update/rollback  using helm. Helm2 was less sophisticated with rollback . Manual changes are not tracked. 
+
+for Helm 3 , it  also take care  of live state,  manual changes are  tracked   
+
+
+
+
+Working with helm - 
+
+# helm --help 
+# helm repo --help 
+
+# helm search  hub wordpress [ list from artifact hub ] 
+
+
+Add repo - 
+# helm repo add bitnami https://charts.bitnami.com/bitnami
+
+Install 
+# helm install myrelease bitnami/wordpress 
+
+
+# helm search wordpress 
+
+# helm search  hub wordpress [ Search from artifact hub ] 
+
+# helm search  repo wordpress [ Search from repo ] 
+
+To list existing releases , & to see what hasn't been updated for long time - 
+
+# helm list  
+# helm install my-release 
+# helm list 
+
+# helm repo list [ List existing repos ] 
+
+# helm repo update [ apt update ] 
+
+
+Lifecycle management of Helm - 
+# helm install my-site bitnami/wordpress 
+# helm install my-second-site bitnami/wordpress 
+Helm Upgrade - 
+# helm install nginx-release bitnami/nginx --version 7.1.0 
+# k get po 
+# k describe pod nginx-release-68..  | grep Image
+# helm upgrade nginx-release bitnami/nginx
+# k get po 
+# k describe pod nginx-release-68..  | grep Image
+To see our  releases - 
+# helm list 
+# helm history nginx-release
+Rollback -
+# helm rollback nginx-release 1 
+# helm history nginx-release
+
+
+Helm - 
+Create a Helm Chart named nginx-chart that deploys an Nginx application using the nginx:1.24.0 image. 
+Configure the deployment to run with 2 replicas. Set the memory requests to 300Mi and the memory limit to 500Mi. 
+Once the chart is created , install it with release name my-nginx in the namespace nginx-helm 
+
+controlplane:~$ ## Create namespace
+controlplane:~$ k create  ns nginx-helm
+namespace/nginx-helm created
+
+controlplane:~$ ## Create a Helm Chart named nginx-chart that deploys an Nginx application using the nginx:1.24.0 image. Configure the deployment to run with 2 replicas
+ 
+controlplane:~$ helm create nginx-chart 
+Creating nginx-chart
+controlplane:~$ pwd ; ls 
+/root
+filesystem  nginx-chart  test.txt
+controlplane:~$ cd nginx-chart/ 
+controlplane:~/nginx-chart$ ls 
+Chart.yaml  charts  templates  values.yaml
+
+controlplane:~/nginx-chart$ vim   values.yaml
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 2  ## changed here 
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: nginx
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.24.0" ## changed here 
+  
+Before - 
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  
+Now - 
+resources: 
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+   limits:
+  #   cpu: 100m
+     memory: 500Mi
+   requests:
+  #   cpu: 100m
+     memory: 300Mi
+
+## Configure the deployment to run with 2 replicas. Set the memory requests to 300Mi and the memory limit to 500Mi. Once the chart is created , install it with release name my-nginx in the namespace nginx-helm 
+
+controlplane:~$ pwd 
+/root
+controlplane:~$ ls -l 
+total 8
+lrwxrwxrwx 1 root root    1 Mar 22 08:03 filesystem -> /
+drwxr-xr-x 4 root root 4096 Apr 12 12:18 nginx-chart
+-rw-r--r-- 1 root root  312 Apr 12 12:00 test.txt
+controlplane:~$ helm install my-nginx nginx-chart/ -n nginx-helm
+NAME: my-nginx
+LAST DEPLOYED: Sat Apr 12 12:19:07 2025
+NAMESPACE: nginx-helm
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace nginx-helm -l "app.kubernetes.io/name=nginx-chart,app.kubernetes.io/instance=my-nginx" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace nginx-helm $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace nginx-helm port-forward $POD_NAME 8080:$CONTAINER_PORT
+controlplane:~$ k config set-context --current --namespace  nginx-helm  
+Context "kubernetes-admin@kubernetes" modified.
+
+controlplane:~$ helm list
+NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+my-nginx        nginx-helm      1               2025-04-12 12:19:07.48070231 +0000 UTC  deployed        nginx-chart-0.1.0       1.16.0     
+controlplane:~$ k get deploy 
+NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+my-nginx-nginx-chart   2/2     2            2           31s
+controlplane:~$ k get po     
+NAME                                    READY   STATUS    RESTARTS   AGE
+my-nginx-nginx-chart-55b5d8564d-wnzqv   1/1     Running   0          35s
+my-nginx-nginx-chart-55b5d8564d-xq5mz   1/1     Running   0          35s
+
+
+
+A helm Chart named nginx-chart is available under /root dir. Install the chart with release name my-nginx under namespace nginx-helm search 
+After Deployment, update the number of replicas to 3 using helm , finally roll back the deployment to revision 1 
+
+controlplane:~$ helm create nginx-chart
+Creating nginx-chart
+
+controlplane:~/nginx-chart$  cd
+controlplane:~$  pwd 
+/root
+controlplane:~$ ls 
+filesystem  nginx-chart  test.txt
+controlplane:~$ k config  set-context --current --namespace  nginx-helm  
+Context "kubernetes-admin@kubernetes" modified.
+
+controlplane:~$ helm install my-nginx nginx-chart/ -n nginx-helm 
+NAME: my-nginx
+LAST DEPLOYED: Sat Apr 12 12:28:31 2025
+NAMESPACE: nginx-helm
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace nginx-helm -l "app.kubernetes.io/name=nginx-chart,app.kubernetes.io/instance=my-nginx" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace nginx-helm $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace nginx-helm port-forward $POD_NAME 8080:$CONTAINER_PORT
+
+controlplane:~$ helm list
+ NAME           NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+my-nginx        nginx-helm      1               2025-04-12 12:28:31.084429635 +0000 UTC deployed        nginx-chart-0.1.0       1.16.0     
+controlplane:~$  k get deploy 
+NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+my-nginx-nginx-chart   1/1     1            1           7s
+
+After Deployment, update the number of replicas to 3 using helm
+
+controlplane:~/nginx-chart$ vim values.yaml 
+controlplane:~/nginx-chart$ grep repl values.yaml 
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 3 ## Set to 3 
+
+controlplane:~$ helm upgrade my-nginx nginx-chart -n nginx-helm  
+Release "my-nginx" has been upgraded. Happy Helming!
+NAME: my-nginx
+LAST DEPLOYED: Sat Apr 12 12:33:13 2025
+NAMESPACE: nginx-helm
+STATUS: deployed
+REVISION: 2
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace nginx-helm -l "app.kubernetes.io/name=nginx-chart,app.kubernetes.io/instance=my-nginx" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace nginx-helm $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace nginx-helm port-forward $POD_NAME 8080:$CONTAINER_PORT
+
+
+controlplane:~$ helm history  my-nginx
+REVISION        UPDATED                         STATUS          CHART                   APP VERSION     DESCRIPTION     
+1               Sat Apr 12 12:28:31 2025        superseded      nginx-chart-0.1.0       1.16.0          Install complete
+2               Sat Apr 12 12:33:13 2025        deployed        nginx-chart-0.1.0       1.16.0          Upgrade complete
+controlplane:~$ helm list 
+NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+my-nginx        nginx-helm      2               2025-04-12 12:33:13.729446237 +0000 UTC deployed        nginx-chart-0.1.0       1.16.0     
+controlplane:~$ k get deploy 
+NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+my-nginx-nginx-chart   3/3     3            3           6m40s
+
+
+
+controlplane:~$ helm rollback my-nginx 1 
+Rollback was a success! Happy Helming!
+controlplane:~$  k get deploy 
+NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+my-nginx-nginx-chart   1/1     1            1           7m48s
+
+
+Install helm - Skipping CRDs 
+
+
+controlplane:~$ helm repo add argo https://argoproj.github.io/argo-helm
+"argo" has been added to your repositories
+controlplane:~$ helm repo list 
+NAME    URL                                 
+argo    https://argoproj.github.io/argo-helm
+
+controlplane:~$ helm list 
+NAME    NAMESPACE       REVISION        UPDATED STATUS  CHART   APP VERSION
+controlplane:~$ helm search repo argo 
+NAME                            CHART VERSION   APP VERSION     DESCRIPTION                                       
+argo/argo                       1.0.0           v2.12.5         A Helm chart for Argo Workflows                   
+argo/argo-cd                    7.8.23          v2.14.9         A Helm chart for Argo CD, a declarative, GitOps...
+argo/argo-ci                    1.0.0           v1.0.0-alpha2   A Helm chart for Argo-CI                          
+argo/argo-events                2.4.15          v1.9.6          A Helm chart for Argo Events, the event-driven ...
+argo/argo-lite                  0.1.0                           Lighweight workflow engine for Kubernetes         
+argo/argo-rollouts              2.39.5          v1.8.2          A Helm chart for Argo Rollouts                    
+argo/argo-workflows             0.45.12         v3.6.5          A Helm chart for Argo Workflows                   
+argo/argocd-applicationset      1.12.1          v0.4.1          A Helm chart for installing ArgoCD ApplicationSet 
+argo/argocd-apps                2.0.2                           A Helm chart for managing additional Argo CD Ap...
+argo/argocd-image-updater       0.12.1          v0.16.0         A Helm chart for Argo CD Image Updater, a tool ...
+argo/argocd-notifications       1.8.1           v1.2.1          A Helm chart for ArgoCD notifications, an add-o…
+
+controlplane:~$ helm install my-argo-cd argo/argo-cd --version 7.8.23 --dry-run | grep CustomResource 
+kind: CustomResourceDefinition
+kind: CustomResourceDefinition
+kind: CustomResourceDefinition
+controlplane:~$ helm install my-argo-cd argo/argo-cd --version 7.8.23  --set crds.install=false --dry-run | grep CustomResource 
+
+controlplane:~$ helm list
+ NAME           NAMESPACE       REVISION        UPDATED                                 STATUS          CHART           APP VERSION
+my-argo-cd      default         1               2025-04-12 12:48:04.332917425 +0000 UTC deployed        argo-cd-7.8.23  v2.14.9  
+
+Generate Helm Template without CRDS - 
+
+https://github.com/kubesimplify/cka-certification/blob/main/episode-6/scenairo_helm.md
+
+
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+
+helm template argocd argo/argo-cd \
+  --version 5.5.0 \
+  --namespace argocd \
+  --set crds.install=false \
+  > /tmp/argocd-template.yaml
+
+
+
+Use Helm to deploy the Traefik Ingress Controller on the Cluster. Install it in a dedicated namespace traefik with release name traefik . 
+Ensure that traefik's support for the k8s Gateway API is enabled via Helm Values 
+
+Short Solution- 
+k create ns traefik   
+helm repo add traefik https://traefik.github.io/charts 
+helm repo update 
+helm install traefik traefik/traefik   -n traefik  --set experimental.kubernetesGateway.enabled=true 
+
+In order to see values that we can set  - 
+helm show values traefik/traefik | grep -A  5 -i kubernetesGateway
+
+helm get values traefik  -n traefik 
+
+controlplane:~$  helm search repo traefik 
+NAME                    CHART VERSION   APP VERSION     DESCRIPTION                                       
+traefik/traefik         35.0.0          v3.3.5          A Traefik based Kubernetes ingress controller 
+
+controlplane:~$ helm list -n traefik 
+NAME    NAMESPACE       REVISION        UPDATED STATUS  CHART   APP VERSION
+controlplane:~$ helm install traefik traefik/traefik -n traefik --set experimental.kubernetesGateway.enabled=true
+NAME: traefik
+LAST DEPLOYED: Sat Apr 12 13:37:21 2025
+NAMESPACE: traefik
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+traefik with docker.io/traefik:v3.3.5 has been deployed successfully on traefik namespace !
+controlplane:~$ helm list -n traefik 
+NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART           APP VERSION
+traefik traefik         1               2025-04-12 13:37:21.920561349 +0000 UTC deployed        traefik-35.0.0  v3.3.5     
+controlplane:~$ helm get values traefik -n traefik
+USER-SUPPLIED VALUES:
+experimental:
+  kubernetesGateway:
+    enabled: true
+#########################################################
+Practice helm with templates option - 
+https://github.com/zealvora/certified-kubernetes-administrator/blob/master/Domain%203%20-%20Services%20and%20Networking/helm-crds.md
+https://github.com/kubesimplify/cka-certification/blob/main/episode-6/scenairo_helm.md
+#########################################################
+
+
+Resource Quota -
+You are tasked with setting up a k8s namespace named "kube-dev" for an application team. The Team should only be allowed to create a maximum of 5 pods
+in their namespace. 
+You are responsible 
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: myresourcequota
+  namespace: kube-dev
+spec:
+  hard:
+    pods: "5"  
+	
+You are responsible for managing resources in a k8s cluster. Create a namespace called kube-dev and restrict its total memory usage to a maximum of 5 GiB
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: memory-quota
+  namespace: kube-dev
+spec:
+  hard:
+    requests.memory: "5Gi"
+    limits.memory: "5Gi"
+
+	
+
