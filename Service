@@ -1,3 +1,95 @@
+
+#########################################################################################################
+					Services
+#########################################################################################################
+Why do We need concept of service? 
+> K8s supports auto healing that is implemented by deployment/replication Controller. If a container goes down, and comes up, we get new Ip. Whereas, service uses labels and sectors so it provides  & support service discovery mechanism. In that case, even if the pod's ip changes changes, it will still serve traffic. 
+> Service gives loadbalancing capability. 
+> Service Expose pod/deployment to external world
+
+
+##############################
+		Why Service? 
+##############################
+A developer with create pod / deploy. Assume we have requirement of creating 3 replicas of pod and 10 concurrent users [ 10 users trying to access the pod at the same time ] to manage load balance , we need more replicas.
+
+If a pod goes down, because of k8s auto healing capability another pod will come up because of replicaset. 
+
+When the pod comes up , the ip changes . Pods are ephirmal and they are assigned dynamic ips. If no service is present, users need to access the pods / application using ip address of the pods , it is difficult . Moreover, if a pod goes down and comes up , the ip changes 
+
+Services connect to the pods / Application using labels & selectors 
+
+Deployment - Service - users need to access the service. Service act as load balancer.
+
+Auto Healing would have failed without presence of service.
+
+3 Advantages of Services, It  solves the below requirements -  
+1. Service does load balancing by managing load on the pods of the deployment. 
+2. Service keeps track of deployment using labels & selectors instead of IPs, it solves service discovery.
+3. Service Can expose to external world.  
+
+
+Types of Kubernetes Services
+
+🔸 ClusterIP
+	• Default Kubernetes service type
+	• Exposes the service only inside the cluster
+	• Assigned a virtual internal IP for internal communication
+	• Not accessible from outside the cluster
+	• Ideal for internal communication between microservices
+🔸 NodePort
+	• Exposes the service externally
+	• Creates a ClusterIP behind the schene
+	• Opens a port on every node in the cluster [  port ranges  30000–32767 ] 
+	• Accessible via: http://<NodeIP>:<NodePort>
+	• Used when you need simple, direct external access
+	• Acts as a foundation for LoadBalancer services
+
+
+With a NodePort service, there are three key ports to consider:
+Target Port: The port on the Pod where the application listens (e.g., 80).
+Port: The virtual port on the service within the cluster.
+NodePort: The external port on the Kubernetes node (by default in the range 30000–32767).
+
+🔸 LoadBalancer
+	• Creates both a ClusterIP and NodePort behind the scenes
+	• Then provisions a cloud provider’s external load balancer
+	• Provides a single, public IP for the service
+	• Ideal for production workloads where you need stable external access
+	• Common in cloud environments like AWS, GCP, Azure
+	• When we load balancer svc, the LB tells AWS to provide public IP, that is performed by cloud control manager 
+
+🔸 Ingress
+	• Not a service type — it's a smart routing layer (reverse proxy)
+	• Requires an Ingress Controller (Nginx, Traefik, HAProxy, AWS ALB, etc.)
+	• Routes traffic based on:
+		• Hostnames (e.g., api.example.com)
+		• Paths (e.g., /user, /dashboard)
+	• Reduces the need for multiple load balancers
+→ One external IP → many internal services
+	• Supports TLS/HTTPS, URL rewriting, and advanced routing rules
+
+
+Init Containers
+A Pod can have multiple containers running apps within it, but it can also have one or more init containers, which are run before the app containers are started.
+Init containers are exactly like regular containers, except:
+	• Init containers always run to completion.
+	• Each init container must complete successfully before the next one starts.
+Examples -
+1. https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+2. https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-initialization/#create-a-pod-that-has-an-init-container
+
+Multipod Container- 
+Min 2 container 
+
+Requirements for multi pod containers - 
+1. When we need containers in with the same network. 
+Interviewer can cross question, we can make a docker file and build both word press & mysql containers writing a docker file and achieve the same.
+Note in this case, this is going against container principle which says all services should run seperately on separate containers,  as they will be sharing the same libraries 
+2. When we need 3 tier application
+3. When we want to use proxy 
+
+
 #########################################################################################################
 					Services
 #########################################################################################################
