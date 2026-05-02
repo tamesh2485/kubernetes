@@ -289,3 +289,385 @@ pv-vol1   1Gi        RWO            Retain           Bound       default/www-mon
 pv-vol2   1Gi        RWO            Retain           Available                           local-storage   <unset>                          7m13s
 pv-vol3   1Gi        RWO            Retain           Bound       default/www-mongodb-1   local-storage   <unset>                          7m13s
 pv-vol4   1Gi        RWO            Retain           Bound       default/www-mongodb-0   local-storage   <unset>                          7m13s
+###
+
+
+Stateful Sets in Kubernetes - 
+Deployment / Replica Set are mostly for stateless Application for what we don't need to preserve the state 
+
+Stateful Set - for stateful application , we need dedicated  DB , persistent Storage so that if there is crash data remains intact 
+
+
+deployment - We dont have control over pods names controlled  by deployment , In short  network identity & Pod name cannot be predicted in advance 
+app-randomid1
+app-randomid2
+app-randomid3
+
+Stateful set - pod will be created with the help of  ordinal index  . starts from 0 to N-1 [ N = number of replicas ] 
+It has unique and stable network identity . We can predict   network identity & Pod name in advance
+
+It is a k8s controller that manages stateful applications. Pods have a specific name , We can predict the network identity. Data is persistent 
+
+Pods are created / deleted In their naming order. 
+
+Each pod will have dedicated storage using pvc  
+app-0
+app-1
+app-2 
+
+Note - stateless set needs headless service 
+ Headless Service - is a service that is not exposed internally just that it is available on a port ,but is a cluster ip type & clusterIp should be none. 
+1 -Create a Working Dir for mounting the volume - 
+
+node01 /mnt/data ➜  pwd
+/mnt/data
+
+node01 /mnt/data ➜   ls -l 
+total 20
+drwxr-xr-x 2 root root 4096 Oct 16 06:39 mongodb-0
+drwxr-xr-x 2 root root 4096 Oct 16 06:39 mongodb-1
+drwxr-xr-x 2 root root 4096 Oct 16 06:39 mongodb-2
+drwxr-xr-x 2 root root 4096 Oct 16 06:39 mongodb-3
+drwxr-xr-x 2 root root 4096 Oct 16 06:39 mongodb-4
+
+2 - Create Headless Service - is a service that is not exposed internally just that it is available on a port ,but is a cluster ip type & clusterIp should be none. 
+
+Doesn't have internal ip  or external ip. 
+
+controlplane ~ ➜  cat headlesssvc.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  labels:
+    app: mongodb
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None
+  selector:
+    app: mongodb
+
+controlplane ~ ➜  k get svc mongodb-service 
+NAME              TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)     AGE
+mongodb-service   ClusterIP   None         <none>        27017/TCP   11s
+
+3 - Create Storage class - 
+
+controlplane ~ ➜   cat sc.yaml  
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mongodb-sc
+provisioner: kubernetes.io/no-provisioner  # No dynamic provisioning
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+
+controlplane ~ ➜  k get sc 
+NAME         PROVISIONER                    RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+mongodb-sc   kubernetes.io/no-provisioner   Retain          WaitForFirstConsumer   false                  5s
+
+controlplane ~ ➜  
+
+4 -Create PV - 
+
+controlplane ~ ➜  cat pv.yaml 
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mongodb-0
+  labels:
+    type: local
+spec:
+  storageClassName: mongodb-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/mongodb-0"
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mongodb-1
+  labels:
+    type: local
+spec:
+  storageClassName: mongodb-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/mongodb-1"
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mongodb-2
+  labels:
+    type: local
+spec:
+  storageClassName: mongodb-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/mongodb-2"
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mongodb-3
+  labels:
+    type: local
+spec:
+  storageClassName: mongodb-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/mongodb-3"
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mongodb-4
+  labels:
+    type: local
+spec:
+  storageClassName: mongodb-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/mongodb-4"
+  persistentVolumeReclaimPolicy: Retain
+
+controlplane ~ ➜  k get pv
+NAME           CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-mongodb-0   1Gi        RWO            Retain           Available           mongodb-sc     <unset>                          9s
+pv-mongodb-1   1Gi        RWO            Retain           Available           mongodb-sc     <unset>                          9s
+pv-mongodb-2   1Gi        RWO            Retain           Available           mongodb-sc     <unset>                          9s
+pv-mongodb-3   1Gi        RWO            Retain           Available           mongodb-sc     <unset>                          9s
+pv-mongodb-4   1Gi        RWO            Retain           Available           mongodb-sc     <unset>                          9s
+
+
+5 -Create Stateful 
+
+controlplane ~ ➜  cat ss.yaml  
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+spec:
+  serviceName: "mongodb-service"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:4.4
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: data
+          mountPath: /data/db
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "mongodb-sc"
+      resources:
+        requests:
+          storage: 1Gi
+
+
+controlplane ~ ➜  k apply -f ss.yaml 
+statefulset.apps/mongodb created
+
+controlplane ~ ✖  k get po 
+NAME        READY   STATUS    RESTARTS   AGE
+mongodb-0   1/1     Running   0          57s
+mongodb-1   1/1     Running   0          34s
+mongodb-2   1/1     Running   0          31s
+
+controlplane ~ ➜  k get pvc 
+NAME             STATUS   VOLUME         CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-mongodb-0   Bound    pv-mongodb-3   1Gi        RWO            mongodb-sc     <unset>                 70s
+data-mongodb-1   Bound    pv-mongodb-4   1Gi        RWO            mongodb-sc     <unset>                 47s
+data-mongodb-2   Bound    pv-mongodb-1   1Gi        RWO            mongodb-sc     <unset>                 44s
+
+controlplane ~ ➜  k get pv 
+NAME           CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                    STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-mongodb-0   1Gi        RWO            Retain           Available                            mongodb-sc     <unset>                          6m50s
+pv-mongodb-1   1Gi        RWO            Retain           Bound       default/data-mongodb-2   mongodb-sc     <unset>                          6m50s
+pv-mongodb-2   1Gi        RWO            Retain           Available                            mongodb-sc     <unset>                          6m50s
+pv-mongodb-3   1Gi        RWO            Retain           Bound       default/data-mongodb-0   mongodb-sc     <unset>                          6m50s
+pv-mongodb-4   1Gi        RWO            Retain           Bound       default/data-mongodb-1   mongodb-sc     <unset>                          6m50s
+
+controlplane ~ ➜  
+
+
+controlplane ~ ➜  k api-resources | grep StatefulSet
+statefulsets                        sts          apps/v1                             true         StatefulSet
+
+controlplane ~ ➜  k get sts 
+NAME      READY   AGE
+mongodb   3/3     2m55s
+
+controlplane ~ ➜  k scale StatefulSet mongodb --replicas 5
+statefulset.apps/mongodb scaled
+
+controlplane ~ ➜  k get sts    
+NAME      READY   AGE
+mongodb   5/5     3m33s
+
+controlplane ~ ➜  k get pv
+NAME           CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                    STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-mongodb-0   1Gi        RWO            Retain           Bound    default/data-mongodb-3   mongodb-sc     <unset>                          9m15s
+pv-mongodb-1   1Gi        RWO            Retain           Bound    default/data-mongodb-2   mongodb-sc     <unset>                          9m15s
+pv-mongodb-2   1Gi        RWO            Retain           Bound    default/data-mongodb-4   mongodb-sc     <unset>                          9m15s
+pv-mongodb-3   1Gi        RWO            Retain           Bound    default/data-mongodb-0   mongodb-sc     <unset>                          9m15s
+pv-mongodb-4   1Gi        RWO            Retain           Bound    default/data-mongodb-1   mongodb-sc     <unset>                          9m15s
+
+controlplane ~ ➜  k get pvc
+NAME             STATUS   VOLUME         CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-mongodb-0   Bound    pv-mongodb-3   1Gi        RWO            mongodb-sc     <unset>                 3m42s
+data-mongodb-1   Bound    pv-mongodb-4   1Gi        RWO            mongodb-sc     <unset>                 3m19s
+data-mongodb-2   Bound    pv-mongodb-1   1Gi        RWO            mongodb-sc     <unset>                 3m16s
+data-mongodb-3   Bound    pv-mongodb-0   1Gi        RWO            mongodb-sc     <unset>                 28s
+data-mongodb-4   Bound    pv-mongodb-2   1Gi        RWO            mongodb-sc     <unset>                 24s
+
+
+Deploy a statefulset named web with 2 replicas using the nginx image.Each pod should have its own 1Gi PV for /usr/share/nginx/html 
+Ensure that statefulset pods have stable network identities and persistent storage that remains associated with thr ordinal index
+Create a headless service named web to facilitate the sts
+
+
+controlplane ~ ➜  cat sc.yaml   
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-sc
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain # default value is Delete
+volumeBindingMode: WaitForFirstConsumer
+
+controlplane ~ ➜  k apply -f sc.yaml  
+ storageclass.storage.k8s.io/local-sc created
+
+controlplane ~ ➜   k get sc 
+NAME       PROVISIONER                    RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-sc   kubernetes.io/no-provisioner   Retain          WaitForFirstConsumer   false                  2
+
+node01 /mnt/data ➜  pwd
+/mnt/data
+
+node01 /mnt/data ➜   ls -ld /mnt/data/web-0 /mnt/data/web-1
+total 8
+drwxr-xr-x 2 root root 4096 Oct 16 09:01 web-0
+drwxr-xr-x 2 root root 4096 Oct 16 09:01 web-1
+
+controlplane ~ ➜  cat pv.yaml  
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-0
+  labels:
+    type: local
+spec:
+  storageClassName: local-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/web-0"
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-1
+  labels:
+    type: local
+spec:
+  storageClassName: local-sc
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/web-1"
+  persistentVolumeReclaimPolicy: Retain
+
+controlplane ~ ➜  k get pv 
+NAME   CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-0   1Gi        RWO            Retain           Available           local-sc       <unset>                          14s
+pv-1   1Gi        RWO            Retain           Available           local-sc       <unset>                          14s
+
+controlplane ~ ➜  cat sts.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "web"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-sc
+      resources:
+        requests:
+          storage: 1Gi
