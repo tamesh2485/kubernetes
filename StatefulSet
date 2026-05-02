@@ -1,0 +1,291 @@
+Stateless v/s Stateful - 
+
+No data is retained , if the pod restarts / replaced nothing  imp is lost. All state is either stored in DB or doesn’t matter  at all 
+Every pod is identical and replaceable  
+It persist data across restarts .  We can predict the pod name and network identity . Pod name starts from 0 to N-1 pod are created  in ordinal index form. 
+
+Stateful Applications
+Definition: A stateful app stores data and depends on that data or a stable identity.
+Key characteristics:
+* Requires persistent storage
+* Each pod has a unique identity
+* Order of startup/shutdown may matter
+* Data must survive pod restarts
+
+Stateful Sets in Kubernetes -
+Deployment / Replica Set are mostly for stateless Application for what we don't need to preserve the state
+ 
+Stateful Set - for stateful application , we need dedicated  DB , persistent Storage so that if there is crash data remains intact
+ 
+ 
+deployment - We dont have control over pods names controlled  by deployment , In short  network identity & Pod name cannot be predicted in advance
+app-randomid1
+app-randomid2
+app-randomid3
+ 
+Stateful set - pod will be created with the help of  ordinal index  . starts from 0 to N-1 [ N = number of replicas ]
+It has unique and stable network identity . We can predict   network identity & Pod name in advance
+ Pods are created / deleted In their naming order.   
+Each pod will have dedicated storage using pvc 
+app-0
+app-1
+app-2
+ Note - Stateful  set needs headless service  Headless Service - is a service that is neither  exposed internally nor externally  just that it is available on a port ,but is a cluster ip type & clusterIp should be none.
+
+
+Stateful Applications
+Definition: A stateful app stores data and depends on that data or a stable identity.
+Key characteristics:
+* Requires persistent storage
+* Each pod has a unique identity
+* Order of startup/shutdown may matter
+* Data must survive pod restarts
+Kubernetes behavior:
+* Deployed with a StatefulSet
+* Each pod has:
+    * Stable hostname (e.g., db-0, db-1)
+    * Persistent Volume (PVC) bound to it
+* Pods are not interchangeable
+Examples:
+* Databases (MySQL, PostgreSQL, MongoDB)
+* Message queues (Kafka, RabbitMQ)
+* Distributed systems (ZooKeeper, etcd)
+
+
+Stateless Applications
+Definition: A stateless app does not store data locally or depend on previous requests. Each request is independent.
+Key characteristics:
+* No persistent data stored in the pod
+* Any pod can handle any request
+* Easy to scale horizontally
+* Pods are interchangeable and disposable
+Kubernetes behavior:
+* Usually deployed with a Deployment
+* Pods can be killed and recreated without issues
+* No fixed network identity
+* No persistent volumes required
+
+ steps -  
+1.  Create  mount dir 2. Create Headless svc 3. Create Storage Class  4. Creare PV 5. Create sts   node01
+ls -ld /mnt/data/datavol0/ /mnt/data/datavol1 /mnt/data/datavol2 /mnt/data/datavol3 /mnt/data/datavol4
+
+controlplane ~ ➜  cat headlesssvc.yaml   
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  labels:
+    app: mongodb
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None
+  selector:
+    app: mongodb  controlplane ~ ➜  k apply -f headlesssvc.yaml  
+Warning: spec.SessionAffinity is ignored for headless services
+service/mongodb-service created
+
+controlplane ~ ➜  cat sc.yaml  
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: kubernetes.io/no-provisioner # indicates that this StorageClass does not support automatic provisioning
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+
+controlplane ~ ➜  k apply -f sc.yaml  
+storageclass.storage.k8s.io/local-storage created
+
+controlplane ~ ➜  k get sc 
+NAME            PROVISIONER                    RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-storage   kubernetes.io/no-provisioner   Retain          WaitForFirstConsumer   false                  3s
+
+
+
+controlplane ~ ➜  cat pv.yaml 
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol0
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/datavol0"
+  persistentVolumeReclaimPolicy: Retain
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol1
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/datavol1"
+  persistentVolumeReclaimPolicy: Retain
+
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol2
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/datavol2"
+  persistentVolumeReclaimPolicy: Retain
+
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol3
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/datavol3"
+  persistentVolumeReclaimPolicy: Retain
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol4
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/datavol4"
+  persistentVolumeReclaimPolicy: Retain
+
+controlplane ~ ➜  k apply -f pv.yaml  
+persistentvolume/pv-vol0 unchanged
+persistentvolume/pv-vol1 unchanged
+persistentvolume/pv-vol2 unchanged
+persistentvolume/pv-vol3 unchanged
+persistentvolume/pv-vol4 unchanged
+
+
+controlplane ~ ➜  cat sts.yaml 
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+spec:
+  selector:
+    matchLabels:
+      app: mongodb # has to match .spec.template.metadata.labels
+  serviceName: "mongodb-service"
+  replicas: 3 # by default is 1
+  minReadySeconds: 10 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: mongodb # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mongodb
+        image: mongo:4.4
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: www
+          mountPath: /data/db
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "local-storage"
+      resources:
+        requests:
+          storage: 1Gi
+
+controlplane ~ ➜   k get po -w 
+NAME        READY   STATUS              RESTARTS   AGE
+mongodb-0   0/1     ContainerCreating   0          10s
+mongodb-0   1/1     Running             0          22s
+mongodb-1   0/1     Pending             0          0s
+mongodb-1   0/1     Pending             0          1s
+mongodb-1   0/1     ContainerCreating   0          1s
+mongodb-1   0/1     ContainerCreating   0          2s
+mongodb-1   1/1     Running             0          4s
+mongodb-2   0/1     Pending             0          0s
+mongodb-2   0/1     Pending             0          1s
+mongodb-2   0/1     ContainerCreating   0          1s
+mongodb-2   0/1     ContainerCreating   0          2s
+mongodb-2   1/1     Running             0          4s
+
+
+controlplane ~ ✖ k get sts
+ NAME      READY   AGE
+mongodb   3/3     87s
+
+
+controlplane ~ ✖ k get pv 
+NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                   STORAGECLASS    VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-vol0   1Gi        RWO            Retain           Bound       default/www-mongodb-2   local-storage   <unset>                          6m36s
+pv-vol1   1Gi        RWO            Retain           Available                           local-storage   <unset>                          6m36s
+pv-vol2   1Gi        RWO            Retain           Available                           local-storage   <unset>                          6m36s
+pv-vol3   1Gi        RWO            Retain           Bound       default/www-mongodb-1   local-storage   <unset>                          6m36s
+pv-vol4   1Gi        RWO            Retain           Bound       default/www-mongodb-0   local-storage   <unset>                          6m36s
+k 
+controlplane ~ ➜  k get sc 
+NAME            PROVISIONER                    RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-storage   kubernetes.io/no-provisioner   Retain          WaitForFirstConsumer   false                  11m
+
+controlplane ~ ➜  k scale statefulset mongodb  --replicas 4
+statefulset.apps/mongodb scaled
+
+controlplane ~ ➜  k get po 
+NAME        READY   STATUS    RESTARTS   AGE
+mongodb-0   1/1     Running   0          2m27s
+mongodb-1   1/1     Running   0          107s
+mongodb-2   1/1     Running   0          87s
+mongodb-3   1/1     Running   0          19s
+
+controlplane ~ ➜  k get pv 
+NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                   STORAGECLASS    VOLUMEATTRIBUTESCLASS   REASON   AGE
+pv-vol0   1Gi        RWO            Retain           Bound       default/www-mongodb-2   local-storage   <unset>                          7m13s
+pv-vol1   1Gi        RWO            Retain           Bound       default/www-mongodb-3   local-storage   <unset>                          7m13s
+pv-vol2   1Gi        RWO            Retain           Available                           local-storage   <unset>                          7m13s
+pv-vol3   1Gi        RWO            Retain           Bound       default/www-mongodb-1   local-storage   <unset>                          7m13s
+pv-vol4   1Gi        RWO            Retain           Bound       default/www-mongodb-0   local-storage   <unset>                          7m13s
