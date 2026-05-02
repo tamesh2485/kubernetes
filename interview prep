@@ -1,0 +1,609 @@
+
+➡️ Core Kubernetes Concepts
+1. Explain the Kubernetes architecture (Master components, Node components).
+2. What is a Pod? How is it different from a container?
+3. Explain Deployments, ReplicaSets, StatefulSets, and DaemonSets.
+4. What is the difference between ClusterIP, NodePort, and LoadBalancer services?
+5. How does Kubernetes handle scaling (Horizontal Pod Autoscaler vs. Vertical Pod Autoscaler)?
+➡️ Configuration & Management
+1. What is a ConfigMap and Secret? When would you use each?
+2. How do you perform rolling updates and rollbacks?
+3. How do you manage environment-specific configurations in Kubernetes?
+4. Explain resource requests and limits. Why are they important?
+➡️ Networking & Storage
+1. How does Kubernetes networking work? Explain CNI (Container Network Interface).
+2. How do services discover pods in Kubernetes?
+3. What are Persistent Volumes (PV) and Persistent Volume Claims (PVC)?
+4. Explain the difference between ephemeral storage and persistent storage.
+5. What is a StorageClass in Kubernetes?
+➡️ Security & Access Control
+1. What is RBAC (Role-Based Access Control) in Kubernetes?
+2. How do you secure secrets in Kubernetes?
+3. What are Network Policies and how do they work?
+4. How do you implement pod security (PodSecurityContext, SecurityContext)?
+➡️ Troubleshooting & Monitoring
+1. How do you debug a failing pod?
+2. How do you check logs and events in Kubernetes?
+3. What tools would you use for monitoring Kubernetes clusters?
+4. How do you troubleshoot networking issues between pods?
+➡️ Advanced & Practical Scenarios
+1. Explain the difference between Deployment and StatefulSet with use-cases.
+2. How do you perform blue-green or canary deployments in Kubernetes?
+3. How would you handle persistent data in a highly available Kubernetes cluster?
+4. Explain how you would design a multi-tenant Kubernetes cluster.
+5. What is Helm and how do you use it for application deployment?
+6. Explain how Kubernetes integrates with CI/CD pipelines (e.g., Jenkins, ArgoCD).
+➡️ Cloud & Real-World Context
+1. How does Kubernetes differ when deployed on AWS, Azure, or GCP?
+2. How do you manage autoscaling in a cloud Kubernetes environment?
+3. How do you handle backup and disaster recovery for Kubernetes workloads?
+4. What is the difference between managed Kubernetes services (EKS, AKS, GKE) and self-managed clusters?
+
+
+
+
+
+
+
+
+
+
+2 - Kube-proxy - Handles networking rules [ iptables ]  .   Manages service to pod communication.
+In parallel, every node also runs a Kube Proxy, which monitors cluster changes via the API Server and sets up forwarding rules whenever a new service is created.
+
+It is a traffic director in k8s . It takes care of service to pod routing , Kube-proxy maintains routing table 
+Performs load distribution - which pod should receive traffic 
+performs health check - ensures traffic is routed to healthy pod 
+
+📌 ImagePullBackoff can be caused if the pod runs with an invalid image or typo in the image name or even a non-existent image.
+Pulling from a private registry without imagePullSecret.
+kubectl create secret docker-registry regret --docker-server=<your-registry-server> --docker-username=<your-name> --docker-password=<your-pword> --docker-email=<your-email>
+
+where:
+	• <your-registry-server> is your Private Docker Registry FQDN. Use https://index.docker.io/v1/ for DockerHub.
+	• <your-name> is your Docker username.
+	• <your-pword> is your Docker password.
+	• <your-email> is your Docker email.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-reg
+spec:
+  containers:
+  - name: private-reg-container
+    image: <your-private-image>
+  imagePullSecrets:
+  - name: regcred
+
+📌 CrashLoopBackOff
+
+When you see "CrashLoopBackOff," it means that kubelet is trying to run the container, but it keeps failing and crashing. After crashing, Kubernetes tries to restart the container automatically, but if the container keeps failing repeatedly, you end up in a loop of crashes and restarts, thus the term "CrashLoopBackOff."
+This situation indicates that something is wrong with the application or the configuration that needs to be fixed.
+Misconfigurations , Errors in the Liveness Probes, The Memory Limits Are Too Low ,  Wrong Command Line Arguments
+
+📌 What is the difference b/n Node Port and Cluster IP ? 
+🔸 ClusterIP
+	• Default Kubernetes service type
+	• Exposes the service only inside the cluster
+	• Assigned a virtual internal IP for internal communication
+	• Not accessible from outside the cluster
+	• Ideal for internal communication between microservices
+🔸 NodePort
+	• Exposes the service externally on a static port [  port ranges  30000–32767 ]  on each nodes 
+	• Creates a ClusterIP behind the schene
+	• Opens a port on every node in the cluster [  port ranges  30000–32767 ] 
+	• Accessible via: http://<NodeIP>:<NodePort>
+	• Used when you need simple, direct external access
+	• Acts as a foundation for LoadBalancer services
+
+
+With a NodePort service, there are three key ports to consider:
+Target Port: The port on the Pod where the application listens (e.g., 80).
+Port: The virtual port on the service within the cluster.
+NodePort: The external port on the Kubernetes node (by default in the range 30000–32767).
+
+📌 What is the difference b/n LB  and Ingress ? 
+
+🔸 LoadBalancer
+	• Creates both a ClusterIP and NodePort behind the scenes
+	• Then provisions a cloud provider’s external load balancer
+	• Provides a single, public IP for the service
+	• Ideal for production workloads where you need stable external access
+	• Common in cloud environments like AWS, GCP, Azure
+	• When we load balancer svc, the LB tells AWS to provide public IP, that is performed by cloud control manager 
+
+🔸 Ingress
+	• Not a service type — it's a smart routing layer (reverse proxy)
+	• Requires an Ingress Controller (Nginx, Traefik, HAProxy, AWS ALB, etc.)
+	• Routes traffic based on:
+		• Hostnames (e.g., api.example.com)
+		• Paths (e.g., /user, /dashboard)
+	• Reduces the need for multiple load balancers
+→ One external IP → many internal services
+	• Supports TLS/HTTPS, URL rewriting, and advanced routing rules
+
+📌 what is service discovery mechanism with respect to Kubernetes?
+service discovery mechanism in k8s means that application [ pods ] could automatically find and communicate with each other without even need to know the IP. 
+
+Even the pods get restarted , it automatically receives new IP and communicate with other  
+
+✅ 1. DNS-Based Service Discovery (Primary Method)
+
+
+Means How do pods find and connect to each  other without knowing IPs in advance 
+In k8s it is default behaviour. 
+Through services names + coreDNS 
+
+Note- CoreDNS is the DNS server for Kubernetes , its resolves services and pod in to IPs  
+
+Kubernetes runs a cluster DNS service (typically CoreDNS) which automatically creates DNS records for every Service.
+How it works
+When you create a Service, Kubernetes assigns:
+	A stable ClusterIP
+	A DNS name like:
+<service-name>.<namespace>.svc.cluster.local
+
+
+📌 What is kubectl in Kubernetes (K8s)?
+
+kubectl (pronounced “cube-control” or “cube-cuddle”) is the command-line tool used to interact with a Kubernetes cluster.
+
+kubectl is the command-line tool used to interact with the Kubernetes API server to deploy, manage, inspect, and troubleshoot any resource inside a Kubernetes cluster.
+
+It is the primary interface for:
+Managing cluster resources
+Deploying applications
+Inspecting cluster components
+Debugging workloads
+
+📌 What is function  of Kube-proxy?
+It manages/handles the networking rules
+Manages Service to pod Communication
+It observes the K8s cluster changes through kubeapi-server and sets up forwarding rule when a service is added 
+Performs load distribution - which pod should receive traffic 
+performs health check - ensures traffic is routed to healthy pod 
+
+📌 What is  Secret and Config Map? 
+Config Map   stores non-sensitive data / configuration data in key value pair such as environment variables. The Data can later be used for volume mount, environment variables. 
+
+If the data is changing. , we using it with volume mount 
+
+Notes about configMaps - 
+
+1- We can Mount ConfigMap as Volume, envVariable, 
+2- when a configMap is already in use and we  edit the configMap, it will automatically be updated 
+3 - However, ConfigMaps consumed as environment variables are not updated automatically and require a pod restart.
+
+
+Secret  stores  sensitive data such as password.
+It is Base64-encoded by default (not encrypted unless you enable encryption at rest)
+
+What it’s used for
+	Database passwords
+	API tokens
+	TLS certificates
+	SSH keys
+	
+📌 What is a Namespace?
+A namespace is a logical separation inside a Kubernetes cluster that groups resources together.
+
+Resource Isolation
+Different teams, projects, or environments can have their own namespaces.
+
+Name Uniqueness
+Namespaces allow you to reuse resource names.
+Example:
+You can have two Services both named frontend in different namespaces:
+	• dev/frontend
+	• prod/frontend
+
+
+Resource Quotas
+You can limit CPU, memory, and object counts per namespace.
+
+
+❗ Default namespaces in a new cluster
+Kubernetes creates a few namespaces automatically:
+Namespace	Purpose
+default	For resources with no namespace specified
+kube-system	System pods and Kubernetes control plane components
+kube-public	Publicly readable data (rarely used)
+kube-node-lease	Tracks node heartbeats
+
+
+
+📌  Pod never starts, Its in pending state, What all we need to check?
+
+For a Pod stuck in Pending state, Kubernetes has accepted the Pod, but it cannot be scheduled onto a node.
+1️⃣ Check Pod Events (MOST IMPORTANT)
+kubectl describe pod <pod-name>
+
+Look at the Events section at the bottom. Common messages:
+	• 0/5 nodes are available
+	• Insufficient cpu / memory
+	• node(s) had taint
+	• didn't match Pod's node affinity
+
+2️⃣ Check Resource Requests vs Node Capacity
+If the pod requests more resources than available on any node, it stays Pending.
+
+
+3️⃣ Node Availability & Status
+Check whether nodes are:
+	• Ready
+	• Schedulable
+
+Look for:
+	• NotReady
+	• SchedulingDisabled
+
+4️⃣ Taints and Tolerations
+If nodes have taints and pod lacks tolerations, it won’t schedule.
+Pod must have matching toleration:
+
+6️⃣ PersistentVolumeClaim (PVC) Issues
+If Pod uses a PVC that is not bound:
+If Pending, causes could be:
+	• No matching PersistentVolume
+	• StorageClass misconfiguration
+
+7️⃣ Scheduler Problems
+Check if kube-scheduler is running:
+8️⃣ Pod Priority & Preemption
+High-priority pods may block low-priority ones.
+
+
+
+📌  If one Pod can’t reach another, I first check if the Service exists and endpoints are populated.
+Then I verify labels/selectors, pod readiness, network policies, and container port vs service targetPort.
+
+1️⃣ Check Pod Status & Readiness
+
+Common issues:
+	• Pod is Running but Readiness probe failing
+	• App not listening yet
+	• Wrong probe path/port
+
+2️⃣ Verify Service Exists
+
+Confirm:
+	• Correct Service type (ClusterIP / NodePort / LoadBalancer)
+	• Correct ports
+
+3️⃣ Check Service Endpoints (VERY IMPORTANT) || Validate Labels & Selectors
+
+If endpoints are:
+	• Empty → Service cannot route traffic
+Root causes:
+	• Label mismatch
+	• Pods not Ready
+	• Wrong selector
+
+5️⃣ Check Port vs TargetPort
+
+Common errors:
+	• App listens on 8080, Service forwards to 80
+	• Wrong named port
+Verify inside pod:
+kubectl exec -it <pod> -- netstat -tulnp
+
+8️⃣ Network Policies (VERY COMMON IN PROD)
+NetworkPolicies can block pod-to-pod traffic.
+
+
+📌  Kubernetes: Node in NotReady state
+
+🔴 What Does Node NotReady Mean?
+A node is NotReady when the kubelet is not reporting healthy status to the control plane.
+Pods on this node may stop working or get evicted.
+
+
+In Kubernetes, a Node is marked as NotReady when the control plane determines that the node is unhealthy or unreachable.
+Here’s the clear breakdown.
+
+When is a Node marked NotReady?
+A Node becomes NotReady when the kubelet on that node stops reporting healthy status to the control plane, or reports unhealthy conditions.
+
+
+• Kubelet down 
+• Container runtime down 
+• Network broken (API server unreachable) 
+• Disk full 
+• CNI plugin broken
+
+1️⃣ Check Node Status & Conditions
+
+Look at Conditions:
+	• Ready = False
+	• NetworkUnavailable
+	• MemoryPressure
+	• DiskPressure
+	• PIDPressure
+
+
+2️⃣ Check Kubelet Status (MOST COMMON CAUSE
+If kubelet is down or unhealthy, node becomes NotReady.
+Common reasons:
+	• Kubelet crashed
+	• Cert expired
+	• Wrong config
+	• Node rebooted and kubelet didn’t restart
+
+3️⃣ Check Node Connectivity to Control Plane
+
+The node must reach the API server.
+Check:
+	• Network connectivity
+	• Firewall rules
+	• Security groups (cloud)
+
+curl https://<api-server-ip>:6443
+
+4️⃣ Container Runtime Issues
+If container runtime fails, kubelet cannot manage pods.
+
+systemctl status containerd
+# or
+systemctl status docker
+
+Common problems:
+
+Runtime crashed
+
+Disk full
+
+Socket permission issues
+
+
+5️⃣ Disk, Memory, and CPU Pressure
+
+Resource pressure can mark node NotReady.
+
+
+df -h
+free -m
+top
+
+If:
+	• Disk full → DiskPressure
+	• Low memory → MemoryPressure
+
+8️⃣ Certificates Expiry
+Expired kubelet certs cause silent failures.
+Check:
+
+journalctl -u kubelet | grep certificate
+Fix:
+
+kubeadm certs renew
+systemctl restart kubelet
+
+#########
+📌  If kubelet stops working on a worker node, will the pod on the node run ?
+The short answer is yes, the pod will continue to run, but the Kubernetes control plane will lose the ability to manage it. 
+Since the kubelet is the agent responsible for communicating between the master node and the worker node, its failure creates a "blind spot" in your cluster. 
+
+LinkedIn +1
+What Happens Immediately
+• The Pod Keeps Running: The actual containers are managed by the container runtime (like containerd or Docker), not the kubelet itself. If the runtime is still healthy, the processes inside your pod will keep executing.
+• Node Status becomes NotReady: After a short grace period (defaulting to 40 seconds), the master node will mark that worker node as NotReady or Unknown because it has stopped receiving "heartbeat" updates from the kubelet. 
+
+Stack Overflow +3
+What Happens After a Few Minutes
+• Pod Eviction: By default, if a node remains NotReady for 5 minutes, the control plane will mark the pods on that node for deletion.
+• Rescheduling: If your pods are managed by a Deployment or ReplicaSet, the control plane will automatically start new copies of those pods on other healthy worker nodes to maintain your desired replica count.
+• The "Zombie" Pod: On the original node, the pod continues to run in reality, but because the kubelet is down, the API server cannot send a "delete" command to actually stop it. It effectively becomes a "zombie" pod that is still consuming local resources but is no longer part of the active cluster state. 
+
+
+🔑 Interview-Ready Summary
+	A node is NotReady when kubelet can’t communicate with the control plane.
+	I check node conditions, kubelet status, container runtime, network/CNI, resource pressure, and API server connectivity.
+
+📌  What is the Difference b/n HPA and VPA ? 
+HPA – Horizontal Pod Autoscaler
+What it does:
+Scales the number of pod replicas up or down.
+Scales:
+➡️ Out (add pods) and In (remove pods)
+Based on:
+	• CPU utilization
+	• Memory utilization
+	• Custom metrics (e.g., requests per second)
+
+VPA – Vertical Pod Autoscaler
+What it does:
+Scales the resources (CPU/memory) of individual pods.
+Scales:
+⬆️ Up (more CPU/memory) and ⬇️ Down (less CPU/memory)
+Based on:
+	• Actual resource usage over time
+How it behaves:
+	• Recommends or applies better CPU/memory requests & limits
+	• Often restarts pods to apply changes
+Modes:
+	• Off – Only recommendations
+	• Initial – Set resources at pod creation
+	• Auto – Adjust resources and restart pods
+
+
+How do we spinup nodes in kubernetes when pods are unscheduleable/pending due to resource issue even though HPA is enabled 
+
+Using Cluster autoscaler or Karpenter.
+
+
+Why HPA alone does NOT fix Pending pods
+HPA (Horizontal Pod Autoscaler):
+	• Watches metrics (CPU, memory, custom metrics)
+	• Increases/decreases replica count
+	• Assumes the cluster already has capacity
+If:
+	• Pods are Pending
+	• Reason = Insufficient cpu / Insufficient memory
+👉 HPA may increase replicas, but no nodes are added, so pods stay Pending forever.
+
+What actually spins up nodes: Cluster Autoscaler
+To automatically add nodes when pods can’t be scheduled, you need:
+✅ Cluster Autoscaler
+It:
+	• Detects unschedulable pods
+	• Increases node group size
+	• Removes nodes when underutilized
+How to enable node autoscaling (by environment)
+1️⃣ Managed Kubernetes (Recommended)
+EKS (AWS)
+	• Use Cluster Autoscaler or Karpenter
+	• Requires:
+		○ Auto Scaling Groups (ASG)
+		○ IAM permissions
+	• Preferred modern option: Karpenter
+GKE (Google Cloud)
+	• Enable Node Pool Autoscaling
+	• Cluster Autoscaler is built-in
+AKS (Azure)
+	• Enable Cluster Autoscaler
+	• Configure min/max node count
+
+
+
+✅ Explain the workflow - 
+
+
+Here’s the simple, step-by-step flow of what happens when you run:
+
+kubectl create deploy mydeploy --image=nginx
+
+
+Think of it as “kubectl → API server → controllers → nodes”.
+
+1. You run the command (kubectl)
+
+kubectl is just a client tool
+
+It does not create containers itself
+
+It reads your kubeconfig and talks to the cluster
+
+👉 kubectl sends a request to the Kubernetes API Server
+
+2. API Server receives the request
+
+The API Server:
+
+Authenticates you (who are you?)
+
+Authorizes you (are you allowed?)
+
+Validates the request
+
+It converts the command into a Deployment object like:
+
+Name: mydeploy
+
+Image: nginx
+
+Replicas: 1 (default)
+
+👉 The Deployment is stored in etcd (cluster database)
+
+3. Deployment Controller wakes up
+
+Kubernetes has many controllers running in the control plane
+
+The Deployment Controller notices:
+
+“A new Deployment exists, but no Pods are running”
+
+👉 It creates a ReplicaSet
+
+4. ReplicaSet Controller creates Pods
+
+The ReplicaSet says:
+
+“I must ensure 1 Pod is running”
+
+The ReplicaSet Controller:
+
+Creates a Pod object
+
+👉 The Pod is saved in etcd (still not running yet)
+
+5. Scheduler assigns the Pod to a node
+
+The Scheduler sees:
+
+“This Pod has no node assigned”
+
+It:
+
+Checks resource availability
+
+Applies rules, constraints, taints/tolerations
+
+Picks the best node
+
+👉 Pod is assigned to a node (e.g., worker-node-1)
+
+6. Kubelet on the node starts the container
+
+On worker-node-1, the kubelet notices a new Pod assigned to it
+
+Kubelet:
+
+Pulls the nginx image
+
+Creates the container using the container runtime (containerd / CRI-O)
+
+Starts the container
+
+👉 NGINX is now running 🎉
+
+7. Status is updated
+
+Kubelet reports back:
+
+Pod is Running
+
+Container is healthy
+
+API Server updates the Pod status
+
+👉 kubectl get pods now shows a running Pod
+
+
+✅  Explain the verson skew - 
+https://kubernetes.io/releases/version-skew-policy/
+
+
+✅   In Kubernetes, kubectl cordon and kubectl drain are both used to manage nodes, but they do different things and are often used together during maintenance.
+
+kubectl cordon <node>
+What it does
+	• Marks the node as unschedulable
+	• No new Pods will be scheduled on the node
+	• Existing Pods stay running
+kubectl drain <node>
+What it does
+	1. Cordon the node automatically
+	2. Evict Pods from the node
+	3. Reschedule Pods onto other nodes (if possible)
+
+✅ Explain PDB 
+In Kubernetes, PDB stands for Pod Disruption Budget.
+It is a policy object that protects your application’s availability during voluntary disruptions by controlling how many pods can be unavailable at the same time.
+
+
+2. What a PDB actually does
+A Pod Disruption Budget:
+	• Specifies minimum number of pods that must remain available
+OR
+	• Specifies maximum number of pods that can be unavailable
+Kubernetes will block pod evictions if violating the PDB.
+1. Why Pod Disruption Budget exists
+Kubernetes sometimes needs to intentionally stop pods, for example:
+	• Node maintenance / OS upgrades
+	• Cluster upgrades
+	• Draining a node
+	• Scaling down nodes
+	• Rolling updates
+These are called voluntary disruptions
