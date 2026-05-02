@@ -1,0 +1,39 @@
+HealthProbes
+
+ 
+  Link - https://github.com/CloudWithVarJosh/CKA-Certification-Course-2025/tree/main/Day%2023 
+
+￼
+
+Liveness Probes (LP) The kubelet uses liveness probes to know when to restart a container. For example, liveness probes could catch a deadlock, where an application is running, but unable to make progress. Restarting a container in such a state can help to make the application more available despite bugs.
+* Purpose: Checks if a container is active/alive and functioning correctly.
+* Behavior:
+    * When the liveness probe fails, the pod is restarted.
+* Key Advantage: Helps recover from irrecoverable failures, such as deadlocks or unresponsive applications.
+
+ Liveness probes determine when to restart a container. For example, liveness probes could catch a deadlock when an application is running but unable to make progress. 
+Readiness Probes (RP) Determines if the application is ready to handle traffic. If this probe fails, the Pod is marked as "Not Ready" and is removed from Service endpoints, but the container itself is not restarted.
+* Purpose: Checks if a container is ready to start accepting traffic.
+* Behavior:
+    * When the readiness probe fails, the pod is removed from the service's load balancer, but the container is not restarted.
+* Key Advantage: Prevents routing traffic to containers that are temporarily unable to serve requests due to initialization delays or resource constraints.
+ Readiness probes determine when a container is ready to accept traffic.If the readiness probe returns a failed state, Kubernetes removes the pod from all matching service endpoints. 
+Startup Probes Ensures that the container has enough time to initialize the application. Until this probe succeeds, liveness and readiness probes are not triggered.
+* Purpose: Used for legacy or slow-starting applications that take variable amounts of time to initialize.
+* Problem Solved: The initialDelaySeconds parameter cannot always capture the correct startup time for such applications. Setting it too high causes unnecessary delays, and too low leads to premature restarts.
+* Behavior:
+    * When a startup probe is defined, liveness and readiness probes do not start until the startup probe succeeds.
+
+A startup probe verifies whether the application within a container is started. This can be used to adopt liveness checks on slow starting containers, avoiding them getting killed by the kubelet before they are up and running.
+
+Probe Timer Configuration Parameters
+
+Property	Meaning	Default Value	Example
+initialDelaySeconds	Wait time before first probe starts after container starts	0 seconds	initialDelaySeconds: 5 → starts after 5 sec
+periodSeconds	Time interval between probe attempts	10 seconds	periodSeconds: 10 → probes every 10 sec
+timeoutSeconds	Max wait time for probe response	1 second	timeoutSeconds: 2 → fail if no reply in 2 sec
+successThreshold	No. of consecutive successes needed to mark successful	1	successThreshold: 3 → pass after 3 successes
+failureThreshold	No. of consecutive failures before marking probe as failed	3	failureThreshold: 5 → fail after 5 failures
+
+
+
