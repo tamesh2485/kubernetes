@@ -1,0 +1,187 @@
+What is git Branch ?
+
+Branches allow you to work on new features, fix bugs, or experiment safely without affecting the production code. When you initialize a Git repository, the default branch is typically called "master" (or "main"). As your project grows and your team collaborates, using branches becomes a best practice for isolating changes until they are ready to be merged.
+
+For example, when a new developer joins the project to work on a new feature, instead of modifying the production branch directly, you create a separate branch for their work. Once the feature is complete and well-tested, it can be merged back into the production branch, ensuring a clean and stable codebase.
+
+Create and switch - 
+# git checkout -b tamesh 
+Create branch - 
+# git branch tamesh 
+Delete branch - 
+# git branch -d  tamesh 
+List branch - 
+# git branch 
+Switch branch - 
+# git checkout tamesh 
+
+
+What is head?
+Head tells you where you are currently on the git repository. 
+When we switch branches, head moves with you 
+
+X088454@KP-L4VVGCP9G7 gitlab % pwd 
+/Users/X088454/gitlab
+
+X088454@KP-L4VVGCP9G7 gitlab % git init 
+
+X088454@KP-L4VVGCP9G7 gitlab % git config --global  user.name "Tamesh Chakraborty"
+X088454@KP-L4VVGCP9G7 gitlab % git config --global  user.email  "tamesh.x.chakraborty@kp.org"
+
+
+
+What is a Branch - pointer to a specific commit in git. Head is where you are at the git repo. 
+
+What is head - It shows where you are in git repository , HEAD always points to the last commit on the currently checked-out branch.
+
+
+# git remote add origin url 
+# git remote -v 
+
+git push is done in order to sync your remote repo with your local repo vice versa for git pull 
+
+# git push origin master 
+# git pull origin master 
+
+
+Step-by-Step Merge Process
+git checkout master
+git merge feature/sign-up'
+
+
+$ Git remote add origin ssh_connection_String - This command is for adding remote repo to your local repo
+$ git remote -v  -  To view remote repo 
+
+
+When your team is growing and you want to give the existing repo access to a newly added resource then we git clone. 
+
+$ git clone ssh_link 
+
+Fetch and merge - 
+$ git fetch origin master - To update origin master branch in local repo [ Downloads commits, files, and refs from a remote repository to your local repository — but does NOT modify your working directory or current branch , To update your local copy of the remote branches without affecting your current work. ] 
+$ git merge origin/master - After fetch , we can update local master branch to point to latest changes master
+
+
+What it does: Combines changes from one branch into your current branch.
+Use case: After fetching or when you want to integrate changes from another branch (local or remote-tracking) into your current branch.
+
+
+Command	Action	Effect on Working Directory	Use Case
+git fetch	Download changes from remote repo	No change to your current files	See what’s new remotely
+git merge	Combine changes into current branch	Changes your files to include merged updates	Integrate changes into your branch
+
+
+Both fetch & merge can be done using - $ git pull origin master 
+
+What is git merge conflict? 
+
+When git fails to automatically identify changes or can't automatically combine changes  made on two branches during a merge. 
+
+how to solve - ? 
+We need to manually decide what to keep and what not  using vim / diff utility or simply opening a the file. Git add . & commit again 
+
+
+Consider the following scenario:
+• Sarah starts working on the fourth story and makes her changes.
+• Without coordinating with Sarah, Max also begins working on the same fourth story.
+• Sarah completes her work quickly and merges her updated version into the master branch.
+• Later, when Max attempts to merge his changes into master, he encounters a conflict because the master branch now contains Sarah's modifications, which differ from his changes.
+Git cannot automatically determine the preferred version. To highlight this discrepancy, Git inserts special conflict markers into the file, displaying both sets of changes along with the surrounding context.
+
+1. Open the Conflicting File:
+Open the file (e.g., fourth story.txt) in your code editor.
+2. Examine the Conflict Markers:
+Each conflict is marked with extra lines that indicate which part belongs to which branch. Decide whether to keep Sarah's version, Max's version, or a combination of both.
+3. Remove Conflict Markers:
+After making your decision, delete the conflict markers and any extraneous lines that you do not need.
+4. Save and Stage the File:
+Save your changes, and add the resolved file to Git using the command:
+git add fourth story.txt
+5. Complete the Merge:
+Once all conflicts are resolved and staged, complete the merge process. The master branch will now include the integrated changes from both Sarah and Max.
+
+
+
+What is git fork??
+In real world , there are thousands of git repos . If we fork the repo, it will become our copy of the original repo. We can add changes and open a pull request to add to the original repo. 
+
+
+Rebasing ?? 
+
+Lets imagine a scenario where sarah  is caught up with her story in her own branch for long, Meanwhile her team members are making progress by adding new stuffs to the master branch. Now sarah  wants to have everything copied from master branch. So sara rebase the master i.e. sarah will now have all the changes that were made in master to her branch
+Sarah can either merge or rebase.  
+
+Rebasing is putting one branch on top of the other. 
+
+
+rebase means copying one branch to other. In doing so, unique identifier [ # / hash ] gets updated / modified. Rebase modifies git commit history. 
+
+When we do git merge, the git history is not updated / unique identifier [ # ] doesn't get modified 
+
+We don’t modify history of git commits ,but when we rebase we do modification of history of git commits / modification of git history 
+
+# git rebase master 
+
+Interactive rebasing - Allows us to update/modify git history 
+# git rebase -i HEAD~4 
+
+Lets say we have multiple commits 
+Added updated story to story.txt 
+Added first story to story.txt 
+Added second story to story.txt 
+Added third story to story.txt 
+
+We want to have only 1 , the first one [ updated story ] 
+
+git rebase -i HEAD~4 
+change the 3 wedont need from pick to squash. 
+
+
+Git cherry-pick
+We can pick up a commit from one branch to other .. cherry-pick is used for one or a few specific commits.
+It can happen that one branch has a certain commit that you need in your working branch , If you need that particular commit in your branch, then we cherry-pick the particular commit in your own branch 
+
+# git cherry-pick <commit-hash>
+
+
+Let’s say you’re on main, and you want to apply a commit from feature-branch:
+git checkout main
+git cherry-pick abc1234
+
+Difference B/n git revert and git reset ? 
+
+Git Reset / git Revert - Undo mistakes / commit 
+
+git Revert creates a new commit . Git revert is useful if we want to undo changes and keep changes in git 
+
+
+
+git reset --soft HEAD~1 [ changes are saved ] 
+git status 
+git reset --hard HEAD~1 [ changes are not saved ] 
+
+
+In order to undo changes , we  can either use git revert or git reset. 
+
+When we want to undo the change and keep those changes in the git history. git Revert creates a new commit 
+$ git revert 8ad5d 
+
+When we want to undo the change , and the change will be in the staging area [ git status ] 
+Git reset --soft HEAD~1 
+
+When we want to undo the change , the change will be deleted 
+Git reset --hard HEAD~1 
+Summary
+Command	Description	Example
+git revert <commit>	Creates a new commit that reverses changes while preserving commit history.	$ git revert 8ad5d
+git reset --soft HEAD~1	Moves the branch pointer back one commit, keeping changes in the staging area for review.	$ git reset --soft HEAD~1
+git reset --hard HEAD~1	Moves the branch pointer back one commit and discards all changes in the working directory.	$ git reset --hard HEAD~1
+
+stashing - 
+If we want to keep working area clean without committing , we can use git stash. It saves in a stashing area. 
+
+git stash - pile in stashing area 
+git stash list - See the piled up files 
+git stash pod  - to bring all piled up files  from stash area to working area 
+git stash show stash@{1}
+git stash pop stash@{1} - to bring specific file  from stash area to working area 
