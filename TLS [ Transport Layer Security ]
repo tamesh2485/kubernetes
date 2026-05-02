@@ -1,0 +1,19 @@
+TLS [ Transport Layer Security ] 
+
+We have popular CA [ Certificate Authorities such as DigiCert that assigns Digital Certificate [ nothing but TLS / SSL certificate ] that contains digital Signature. 
+
+Note - Across all systems in our browsers , it contains popular CA’s root certificates which contains public key of popular CA such as DigiCerts under Trust CA Folder. 
+
+The Server generates csr using openssl , it will have pub and private key, the public key will be shared with digicert that will contain CN , to and expiry dates etc. 
+
+DigiCert will create a hash and encrypt it using digicert’s private key 
+
+When people from outside tries to access from the browser by hitting abc.example.com , the browser will validate the certificate using  Root certificate that has the public key of   popular CA such as DigiCerts under Trust CA Folder , Also it will  run the hash to see if the hash value is same. If same, it means the data is not tempered and we can proceed.   If not, It will tell us to proceed with your own risk.  
+
+
+Difference between Transmission Control Protocol vs User Datagram Protocol ? 
+
+“The main difference between Transmission Control Protocol and User Datagram Protocol is reliability vs speed.
+TCP is connection-oriented, which means it establishes a connection before sending data. It ensures reliable delivery, maintains the correct order, and retransmits lost packets, but this makes it slower. 
+UDP, on the other hand, is connectionless. It sends data without establishing a connection, so it’s faster but doesn’t guarantee delivery, order, or duplication control.
+ In terms of use cases, TCP is used where accuracy is critical, like web browsing and file transfers, while UDP is preferred for real-time applications like video streaming or online gaming, where speed matters more than perfect reliability.”**
