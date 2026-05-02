@@ -1,0 +1,21 @@
+Reasons of gatewayAPI - 
+
+1 . Ingress has only 2 spec section , 
+  a. path 
+  b. service 
+It lacked canary model of deployment , Web Application Firewall [ WAF ] , Rate limiting , DDoS 
+However, these was overcome through annotations but ingress became  very complex. 
+
+	2. It is actually the duty of platform engineer to install ingress Class, however DevOps team too was making the modification of ingress Class in the ingress file. It became confusion .
+
+In order to solve above problems, gatewayAPI came into place. 
+Gateway API 
+ - gatewayclass resource
+ - gateway resource 
+ - httproute  resource 
+
+
+Gateway -  installs  3 custom resources 
+ gatewayClass -  It is similar to controller , Defines which controller manages gateways 
+  gateway Resource - Defines gatewayclass to be used 
+  httpRoute - Defines Routing rules , allows HTTP / HTPPs , Weight based Routing , 
