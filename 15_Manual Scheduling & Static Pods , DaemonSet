@@ -1,0 +1,48 @@
+15_Manual Scheduling & Static Pods , DaemonSet 
+
+
+The Kubernetes Scheduler is responsible for automatically placing pods on available worker nodes based on factors like:
+* Resource availability (CPU, memory).
+* Taints and tolerations (node restrictions, discussed in Day 16).
+* Affinity and anti-affinity rules (Discussed in Day 17).
+
+
+Why is Manual Scheduling Required?
+
+* Troubleshooting & Debugging: Helps diagnose scheduling issues by placing a pod on a specific node.
+* Testing Node-Specific Workloads: Ensures an application runs on a specific node (e.g., a database pod requiring an SSD).
+* Kubernetes Scheduler Is Disabled: If the scheduler is down, you can manually schedule pods as a fallback.
+What is Manual Scheduling?
+
+Manual scheduling means explicitly assigning a pod to a node using the nodeName field in the pod’s YAML manifest. This completely bypasses the Kubernetes scheduler.
+How is Manual Scheduling Useful?
+
+* Guarantees that a pod runs on a particular node.
+* Useful when a workload requires special hardware or node-specific configurations.
+* Helps troubleshoot why a pod isn't scheduled automatically.
+
+
+What Are Static Pods?
+
+Static pods are created and managed by the Kubelet on a node, not by the Kubernetes API server.
+📌 Static pods are defined in /etc/kubernetes/manifests/.
+Unlike regular pods, static pods are not managed by the Kubernetes API server, meaning you cannot modify them using kubectl commands. Instead, they are directly managed by the kubelet on each node, and any changes require modifying or deleting the static pod manifest file on the node itself.
+Static pods can be defined on any node, including both control plane and worker nodes. However, they are not scheduled by the Kubernetes Scheduler—instead, they are directly managed by the kubelet running on the node where their manifest exists.
+Static Pods are always bound to one Kubelet on a specific node.
+Mirror Pods in Kubernetes
+
+When a static pod is created, the kubelet automatically generates a corresponding "mirror pod" on the Kubernetes API server. These mirror pods allow static pods to be visible when running kubectl get pods, but they cannot be controlled or managed through the API server.
+How Mirror Pods Work
+
+* The Kubelet detects static pod manifests from /etc/kubernetes/manifests/.
+* It creates and manages the static pod independently from the Kubernetes control plane.
+* To ensure visibility in kubectl get pods, Kubelet creates a "mirror pod" on the API server.
+* However, this mirror pod is read-only—it cannot be modified, deleted, or controlled using kubectl.
+
+
+
+A DaemonSet automatically deploys one copy of a Pod on each node. Common use cases:
+* 🧾 Logging agents (e.g., Fluentd)
+* 📊 Monitoring agents (e.g., Prometheus node exporter)
+* 🌐 Networking components (e.g., CNI plugins)
+* 🔐 Security/antivirus agents
