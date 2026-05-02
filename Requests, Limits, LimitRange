@@ -1,0 +1,78 @@
+Requests and Limits can be based on memory, Cpu, ephemeral-storage etc. 
+
+Request - Minimum resource guaranteed [ typically cpu/memory ]
+Limit - Maximum  upto which it can consume. 
+ Benefits of Using Requests and Limits
+
+1. Efficient Resource Allocation – Ensures resources are optimally used across the cluster.
+2. Avoidance of Resource Starvation – Prevents one workload from hogging all resources.
+3. Cluster Stability – Ensures Kubernetes can efficiently schedule and manage workloads.
+4. Mitigation of Noisy Neighbor Problem – Prevents workloads from disrupting others.
+ 
+What happens when Pod tries to use more than its limits -   CPU - The kernel Throtles the CPU . CPU is compressible so  the pod may continue to run but might show slowness. 
+Memory - The Kernel May Terminate the Pod. 
+		 	if there is memory pressure , the pod will be OOM Killed, 
+			If there is not memory pressure , the pod continues to use memory beyond the limit. but Its hardly 
+ Kubernetes allows you to control resource allocation for containers using:
+Resource Constraint	Definition	Impact
+Requests	The minimum CPU/memory a container needs.	Used by the scheduler to decide which node to place the Pod on.
+Limits	The maximum CPU/memory a container can use.	Enforced by the kernel, preventing overuse.
+
+
+The most common resource types in Kubernetes are:
+Resource	Unit	Example
+CPU	Cores (millicores)	500m (0.5 cores)
+Memory	Bytes (MiB/GiB)	512Mi, 1Gi
+Ephemeral Storage	Bytes (MiB/GiB)	500Mi, 2Gi
+GPU	Vendor-specific	nvidia.com/gpu: 1
+HugePages	Bytes (2Mi, 1Gi)	hugepages-2Mi: 512Mi
+Custom Devices	Vendor-specific	example.com/fpga: 1
+
+What Happens When a Pod Exceeds Limits?
+
+Resource	Behavior When Limit is Exceeded
+CPU	Throttled (restricted CPU usage).
+Memory	Killed (Out of Memory error if memory pressure exists).
+ CPU Limits: CPU Throttling
+
+* If a container exceeds its CPU limit, the Linux kernel throttles it.
+* CPU is a compressible resource, so workloads slow down instead of failing.
+Memory Limits: OOM Kills
+
+* If a container exceeds its memory limit, the kernel may kill it.
+* Memory is an incompressible resource, so exceeding it results in termination.
+* If there is no memory pressure, the container may not be killed immediately.
+  To understand how kubectl top nodes (and kubectl top pods) retrieves resource metrics, let's break down the process:
+1. cAdvisor Collects Metrics (inside kubelet)
+    * cAdvisor is built into the kubelet and helps it collect CPU, memory, filesystem, and network usage from nodes and pods.
+    * You don’t run cAdvisor separately; kubelet leverages it (and runtime/CRI data) to gather container and node stats.
+ 
+
+Kubelet is responsible to create pods once it gets instruction from kube-api server. Once it gets the instruction to create pod from kube-api server, the kubelet reaches out to Container Runtime [ crio / containerd ]   The Container Runtime  pulls the image from registry, Configure networking using the CNI plugin present by invoking network script in /opt/cni/net.d   The Container Runtime mounts volumes in the pod  The Container Runtime creates and starts the containers inside the pod 
+
+A LimitRange object allows administrators to enforce default requests and limits for CPU and memory in a Kubernetes namespace. If a container does not specify resource requests or limits, the defaults from the LimitRange will be applied.   apiVersion: v1
+kind: LimitRange
+metadata:
+  name: resource-limits
+  namespace: default  # Change this to your target namespace
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "2"        # Default CPU limit
+      memory: "4Gi"   # Default memory limit
+    defaultRequest:
+      cpu: "1"        # Default CPU request
+      memory: "2Gi"   # Default memory request
+    max:
+      cpu: "4"        # Maximum CPU a container can request
+      memory: "8Gi"   # Maximum memory a container can request
+    min:
+      cpu: "500m"     # Minimum CPU a container must request
+      memory: "512Mi" # Minimum memory a container must request  
+Field	Description
+default	The default resource limits applied when none are specified in the container spec. Example: A container without limits will be capped at 2 CPUs and 4Gi memory.
+defaultRequest	The default resource requests applied when none are defined. Example: A container will be guaranteed 1 CPU and 2Gi memory if no requests are set.
+max	The maximum resources a container can request. Example: A container cannot request more than 4 CPUs or 8Gi memory.
+min	The minimum resources a container must request. Example: A container must request at least 500m CPU and 512Mi memory to be scheduled.
+type: Container	Specifies that these rules apply to containers within the namespace.
