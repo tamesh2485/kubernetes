@@ -1,0 +1,383 @@
+Sahana’s Interview Question 
+✅  What is Kubernetes ? 
+K8s is a open source orchestration tool  used to manage containerized application 
+It is highly available, provides auto scaling , auto healing 
+
+
+✅  What are Containers , how do they differ from VM?
+ Containers are running instance of container image. It contains  binaries , libraries necessary to run an application. It virtualizes the OS , Shares the Host OS  kernel & it packages the application and its dependencies. Hence, They are light weight , bootup fast , sizes in mb , process level isolation , Uses less resource
+  VM virtualizes the h/w, Runs a full guest OS on top of the hypervisor.  The images huge in size / heavier [ in Gbs] Slow to start , use lot of resources , It is h/w level isolation 
+ 
+
+✅  What are benefits of using K8s in a prod environment?
+. It  keeps application highly available by restarting failed containers 
+It autoscales based on traffic. 
+Handles  zero downtime upgrades using rolling deployment
+Manages resources efficiently	
+
+
+✅  What is the difference between docker and Kubernetes?
+
+Docker is a platform that builds , package and rung application inside  containers Where as K8s is a open source orchestration tool  used to manage containerized application 
+It is highly available, provides auto scaling , auto healing . 
+K8s is for large scale organisations  Docker Creates and runs containers where as K8s manages  / scales those containers 
+ ✅ What is pod? 
+A pod is the smallest  deployable unit of k8s. Contains one or multiple containers. All containers inside a pod shares the  same network namespace , volumes, lifecycle  
+
+✅  Deployment ? 
+IT is a controller that helps you manage your application lifecycle . Define the desired state of your app [ defines replicas of pod ]  , Perform rolling update without downtime . Allows to rollback to prev version if needed 
+
+
+✅  Scheduler? 
+  It is the component thot looks for pods for which nodes are not assigned and assign nodes to them. Factors can be many such as affinity/anti-affinity , workload, individual and collective resource requirements, hardware/software/policy constraints
+
+✅ What is a service ? 
+Kubernetes services is a stable way to connect to pods . We have 3 types of service -  ClusterIP , NodePort , LB
+
+Service Provides a fix IP and DNS name. It routes to the desired pod based on labels and selectors. Ensures load balancing across healthy pods 
+Applications can reliably talk to each other without worrying about pod restarts / ip changes 
+
+
+
+✅ What is secret and cm? 
+Cm and Secret store configuration data .  Config Map   stores non-sensitive data / configuration data in key value pair such as environment variables. The Data can later be used for volume mount, environment variables.
+ 
+If the data is changing. , we using it with volume mount
+ 
+Notes about configMaps -   1- We can Mount ConfigMap as Volume, envVariable,  2- when a configMap is already in use and we  edit the configMap, it will automatically be updated  3 - However, ConfigMaps consumed as environment variables are not updated automatically and require a pod restart.
+  
+Secret  stores  sensitive data such as password.
+It is Base64-encoded by default (not encrypted unless you enable encryption at rest)  
+What it’s used for
+Database passwords
+API tokens
+TLS certificates
+SSH keys
+
+✅  What is replicaSet? 
+Ensured desired count of pods always running  
+
+✅ What is a Namespace?
+A namespace is a logical separation inside a Kubernetes cluster that groups resources together.
+
+Resource Quotas
+You can limit CPU, memory, cm , secrets , object etc  counts per namespace.
+
+❗ Default namespaces in a new cluster
+Kubernetes creates a few namespaces automatically:
+Namespace	Purpose
+default	For resources with no namespace specified
+kube-system	System pods and Kubernetes control plane components
+kube-public	Publicly readable data (rarely used)
+kube-node-lease	Tracks node heartbeats
+
+✅ What are gains and toleration ? 
+
+Taints are put on nodes so that only certain pods can run on them 
+A tainted node says don’t schedule any pod on the node unless toleration matches 
+Useful for keeping dedicates tasks to a particular nodes 
+
+✅  How does K8s handle persistent storage for containers ? 
+
+K8s uses PVs and PVCs to manage storage for stateful applications 
+
+PV is a piece of storage in a cluster provisioned by an admin or dynamically 
+PVC - request by a pod for storage specifying size and access mode 
+
+✅  How does k8s manage rolling update and rollback 
+
+Using deployment  object   .spec.strategy.rollingUpdate.maxSurge is an optional field that specifies the maximum number of Pods that can be created over the desired number of Pods
+The value cannot be 0 if maxUnavailable is 0. The absolute number is calculated from the percentage by rounding up. The default value is 25%.
+
+
+✅   What is the role of ingress ? 
+
+Exposes services outside the cluster using HTTP or HTTPS 
+Route incoming traffic  using host based / path based routing . 
+Supports SSL termination 
+Offers load balancing  for better traffic management 
+
+We can manage access to multiple services through a single external IP 
+
+To overcome limitations of Load Balancer.
+For NodePort, we cannot expose the node IP to the internet. nodePort usually is used for within organization and its not good to expose to external customers.
+ 
+Problems with Kubernetes Services -
+1. It is dependent on  cloud provider. It asks Cloud provider to create LB for svc where load balancer is available in  static public IP.
+2. Security issue - We don’t have control , we are very much dependent on cloud provider. We have to use what is provided.
+Services in k8s was not providing Enterprise level load balancing  capabilities. such as path based / host based / whitelisting / black listing / sticky sessions / load based routing/ Ratio based load balancing  etc & TLS loadBalancer
+    3. Enterprise and TLS Load Balancing Capabilities - Services in K8s was missing Enterprise level Load Balancing capabilities such as sticky session, host based LB , path based , whitelisting / black listing, ratio based LB
+    4. Cloud Provider charges for each services. Charged for each static public IP. Hence, Load Balancer Service is expensive.    
+Ingress comes in to picture -
+1. Ingress defines routing.  We can perform host based / path based routing, cookie based routing, whitelisting ips , backlisting ips etc
+2. Ingress can use a single IP address handling all services.
+3.  Ingress solves the above problem of enterprise load balancing capabilities
+ What Ingress Does?   
+* User will Create ingress resource defining type of rules they need. They will also decide the type of load balancer they need to use such as f5, nignx etc
+* LB companies  like nginx / F5 etc will write their ingress controller and share steps to install in github etc
+* As a user, we need to deploy ingress controller using helm etc based on requirement.
+
+
+✅  What is difference between stateful and stateless applications in Kubernetes , How are stateful sets and Deployments used to manage them ? 
+
+Stateless application   - Don’t store data between sessions Every pod is identical and replaceable , these are managed through deployments which handles scaling and rolling updates . Used for web application like  redis
+
+Stateful application - are those that stores / retain data . They are managed using stateful sets.  We can predict the pod name & order and network  identity. The pod no. starts from 0 to N-1 . N is no. of replicas Used for mysql , kafkaesque, redid 
+pod will be created with the help of  ordinal index  . starts from 0 to N-1 [ N = number of replicas ]
+Note - Stateful  set needs headless service  Headless Service - is a service that is neither  exposed internally nor externally  just that it is available on a port ,but is a cluster ip type & clusterIp should be none.
+
+
+Key characteristics:
+* Requires persistent storage
+* Each pod has a unique identity
+* Order of startup/shutdown may matter
+* Data must survive pod restarts
+
+✅   What Happens when you run k apply -f deploy.yaml ?  
+User send a request to deploy  your application to k8s  through kubectl or yaml 
+
+The api server processes the requests performs authentication , authorization  and validation  &  stores it  in etcd in  key:value format
+
+The scheduler picks a worker node with enough resources by checking cpu/memory , Taints toleration  , Affinity / Anti Affinity 
+
+The Kubelet on the worker node checks for the pod specs , informs the container runtime , Container runtime pulls the images invokes the network plugin under /opt/cni/bin & starts the container 
+
+The kube-proxy ensure the app is accessible  via networking rule
+
+Controller keep monitoring the system and make fixes if needed 
+  ✅   What if the scheduler is down? Will k8s still create new pods?
+No. Without a scheduler , new pods cannot get scheduled on any nodes. Existing pods will continue  to run, however autoscaling & new deployments will not work    ✅ What happens if etcd  crashes?  
+K8s can’t read / write cluster state anymore. Cluster becomes unstable . Control plane components will not work properly 
+
+✅ Can a Pod be scheduled without a kubelet on the node? 
+No,  kubelet is responsible for running / managing the pod . If kubelet is missing, we cannot schedule pods 
+
+✅ Role of kube  proxy 
+In parallel, every node also runs a Kube Proxy, which monitors cluster changes via the API Server and sets up forwarding rules whenever a new service is created.  It is a traffic director in k8s . It takes care of service to pod routing , Kube-proxy maintains routing table  Performs load distribution - which pod should receive traffic 
+performs health check - ensures traffic is routed to healthy pod 
+
+✅ How does a aPI server authenticate a user request ? 
+
+It authenticates who you are 
+It authorizes what you can do 
+Admission controller -  Admit before accepting the request 
+
+✅  How do master and worker nodes communicate securely ? 
+They use TLS certificate and communicate via API server end point 
+The kubelet on worker talks securely to the  API server 
+
+✅  If a node goes down what happens to the pod on it ? 
+
+Controller manager detects the failure , marks the node as not ready 
+Reschedules the pod to healthy node if possible 
+
+✅  What happens during a rolling update in Kubernetes ?
+The Controller replaces the old pods with new ones gradually ensuring 0 downtime 
+The scheduler places the new pods and kubelet runs them 
+
+✅  Can kubelet restart a crash container ? 
+Yes , if a container in a pod fails , it restarts it according to restart Policy - Never , OnFailure , Always 
+
+✅  Explain Pod Lifecycle ? 
+
+Phase	Description
+Pending	Pod has been accepted by the Kubernetes cluster, but containers are not yet running. Reasons include image pull delays, unscheduled pods, etc.
+Running	Pod has been scheduled to a node, and all containers are either running or starting.
+Succeeded	All containers in the Pod have terminated successfully (exit code 0), and the Pod won’t restart.
+Failed	All containers have terminated, but at least one exited with failure (non-zero exit code), and is not set for automatic restart.
+Unknown	Kubernetes cannot determine the Pod state, often due to communication issues with the node where the Pod is running. Often because of Infrastructure failures.node is down / unresponsive
+
+✅  What are initContainers ? 
+
+Lets imagine a scenario where before your main containers starts , we might need to - 
+A- Download a config file from somewhere 
+B- wait for another service to be ready 
+C - Do some setup like db migrations 
+
+It is a helper container that runs before your main application starts and only once. It runs to completion  . Init Containers run on after another. Never run together. 
+
+
+ ✅ SideCar Container Scenerios - 
+Container 1 running main application, Container 2 collecting logs from main application and dumping on to simple login server 
+
+Container 1 running main application, Container 2 collecting  cpu / memory aplication specific stats from main container  and sending to repository 
+
+Ambassador Patten -  Container 1 running main application, Whenever connection has to made outside, we using proxy Container 2 to do the same 
+ Container 2 [ secondary container ] acting as reverse proxy. When someone from outside connects, they will hit container2 and from container 2 it will be connected to container 
+
+
+
+Pod to Pod Communication - Pod to pod communication happens through IP , no special set up is needed. Default behavior. DNS names are resolved by CoreDNS 
+
+Pod to service Communication -  services acts as stable end point for pod 
+
+Pod to external communication - pod can access external websites / APIs by default. We can restrict using network policies 
+CNI plugins - assigns IP , enforcing  n/w policies 
+
+
+✅ Pod Affinity - 
+When we have multiple pods and we want to place set of pods to be scheduled on a particular node 
+
+✅ Pod Anti-Affinity Rule
+========================
+
+The requiredDuringSchedulingIgnoredDuringExecution rule ensures:
+No two Pods with label id=very-important can be scheduled on the same node.
+This guarantees at most 1 Pod per worker node when the cluster has sufficient nodes.
+
+
+
+✔  topologySpreadConstraints is designed to balance Pods across topology domains.
+It tries to evenly spread Pods but does not guarantee that only one Pod can run on a node.
+
+
+✅ ConfigMap
+ConfigMap - is like we are storing the setting of your application outside the container. Non - Sensitive Data We can plug them in env variables / mount them as files. 
+
+￼
+Cm and Secret store configuration data .  Config Map   stores non-sensitive data / configuration data in key value pair such as environment variables. The Data can later be used for volume mount, environment variables.
+ 
+If the data is changing. , we using it with volume mount
+ 
+Notes about configMaps -   1- We can Mount ConfigMap as Volume, envVariable,  2- when a configMap is already in use and we  edit the configMap, it will automatically be updated  3 - However, ConfigMaps consumed as environment variables are not updated automatically and require a pod restart.
+  
+Secret  stores  sensitive data such as password.
+It is Base64-encoded by default (not encrypted unless you enable encryption at rest)  
+What it’s used for
+Database passwords
+API tokens
+TLS certificates
+SSH keys 
+
+￼
+
+✅  What is PV and What is Volume ? 
+Volume dies with the pod 
+A PV lives outside the pod & continues to store data even after the pod is recreated   
+✅  How does K8s handle persistent storage for containers ? 
+
+K8s uses PVs and PVCs to manage storage for stateful applications 
+
+PV is a piece of storage in a cluster provisioned by an admin or dynamically . The PV exists independently of the pod.  
+PVC - PVC is basically request for storage.  request by a pod for storage specifying size and access mode 
+
+
+Binding b/n pv and pvc happens based on size, access mode and storage class . Once bound ,  pac will always point to the pv. 
+
+
+
+✅  Static Provisioning 
+Manually Create Storage before any application asks for it 
+
+
+As a cluster Admin , We create a pv  When someone requests for a storage with certain size and access mode , if k8s fins a relevant PV , the PVC will be bound to the PV. 
+Its the pod there the PVC is defined 
+
+
+✅  Dynamic  Provisioning 
+It removes the manual creation of PV 
+Instead of an admin pre-creating PVs , K8s creates the Storage when an application asks for it. It happens through storage class 
+
+
+When a PVC references a storage class , k8s talks to the stage backend and creates the pv on the fly. The pv is immediately bound to the PVC . The storage is created only when it is needed. 
+
+✅  Access Mode
+
+RWO [ ReadWrite Once ] - The volume can be mounted as RW  by only one node at a time  . All pods running on the same node can access the data .. 
+RWX [ Read Write Many ] - The volume can be mounted as RW  by multiple  nodes at the same time
+
+✅  Reclaim policy 
+What happens when pod is deleted ? Nothing happens  to storage data when pod is deleted. 
+When pac is deleted , We need to decide what will happen to the data 
+Retain -  if  pvc is deleted , pv will be release. Data will be kept as it is. K8s doesn’t delete the data and doesn’t make the volume available for automatic reuse 
+Delete  - if  pvc is deleted , pv will be deleted , Data too  is gone 
+
+✅  What is ReplicaSet?
+Controller that ensures certain no. of pods are always running 
+
+✅ How deployment use replicaset?
+Deploy manages the RS and RS manage the pods . RS is responsible for maintaining  the no. of pods. 
+Deployment ensures ReplicaSets are managed and updated properly. 
+
+✅ Rolling Update 
+ maxUnavailable - At any given  point of time during	update only 1 pod can be unavailable.
+maxSurge:1 - At any given  point of time during	update one extra pod will be available for the new patch 
+
+✅ Rollout 
+
+# kubectl rollout undo deployment  deployment_name 
+
+✅  Revision History 
+
+# kubectl  rollout history deploy  deployment_name 
+
+✅   pause / resume 
+# kubectl  rollout pause  deploy  deployment_name 
+# kubectl  rollout resume   deploy  deployment_name
+
+
+￼
+
+✅   Blue Green Deployment 
+ 
+￼
+
+✅   Canary Deployment  [ Gradual rollout ] 
+
+We release the new version to a small % of users first and test it 
+
+￼
+
+
+
+
+
+Services - 
+
+✅   why service? 
+Pod is not permanent with every start it gets a new ip 
+Service provides a stable virtual ip , no matter how many pods come and go, service will be content , they connect to pods based on labels and selectors . 
+
+✅   what is clusterIP? 
+By default when we create a sec without mentioning the type, by default k8s creates a clusterIP, which is accessible within the cluster , We cannot access it from local machine or outside 
+Intra-Cluster Communication
+
+It is the default service type in k8s. 
+User for internal only communication 
+Provides a stable ip and dns name inside the cluster	 
+
+✅    NodePort Service 
+It is for basic external  access 
+Exposes your application outside the cluster by opening a port from 30000 to  32767 on your nodes IP . 
+http://node_ip:port 
+Accessing application from outside the cluster . 
+We have port , target port and node port  
+
+
+✅    Load Balancer  Service 
+
+It exposes your application outside the cluster using cloud providers load balancer. For each service we get a public static ip 
+For on-prem - we can us metallb  
+
+✅   Headless Service - 
+A headless svc has no ClusterIP
+DNS gives you the pods ip directly 
+Use it when apps need direct pod level access instead of load balancing that’s where headless sac is used . 
+Cluster Ip is set to none 
+Type is cluster ip 
+For Database connections like mongo db ,kafkaesque  , for stateful set 
+
+✅ CoreDNS
+CoreDNS is the DNS server for Kubernetes , its resolves services and pod in to IPs 
+
+✅ Service Discovery?
+Means How do pods find and connect to each  other without knowing IPs in advance 
+In k8s it is default behavior. 
+Through services names + coreDNS 
+
+
+✅Stateless vs Stateful application  Stateless v/s Stateful - 
+
+No data is retained , if the pod restarts / replaced nothing  imp is lost. All state is either stored in DB or doesn’t matter  at all 
+Every pod is identical and replaceable  
+It persist data across restarts .  We can predict the pod name and network identity . Pod name starts from 0 to N-1 pod are created  in ordinal index form. 
