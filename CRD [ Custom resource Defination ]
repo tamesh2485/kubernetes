@@ -1,0 +1,78 @@
+If we need a new resources that is not present in k8s cluster, we can do it by extenting the capabilities of API and adding it to K8s Cluster. 
+  Main objests are -   Custom Resource Defination - It is a defination file/ template  that has all the fields that a resources should have, How a resouces should be validated 
+
+Custom Resource - It is the instance of CRD. It extends the K8s API It is an extension of the Kubernetes API that is not necessarily available in a default Kubernetes installation.  Custom Resource Controller- Manages / Monitors the lifecycle of CR. Like we have deployment conroller for deployment, node controller for node.   Once we create the Custom Resource, K8s does the  validation of the  the resources through CRD.  Flow -   DevOPS creates the CRD  users / Developer create the CR  K8s does the validation of the resource using CRD DevOPS also creates Custom controller that manages / monitors the lifecycle of the CR and ensures the destired state is maintained.   Follow - https://learn.kodekloud.com/user/courses/udemy-labs-certified-kubernetes-administrator-with-practice-tests/module/a079f065-60ca-422a-9045-750ae56550bd/lesson/dca6ed68-e26e-4af9-98e6-366d640bd078 
+ Scenerio 1- Create CR from existing CRD -   Create CRD - 
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: internals.datasets.kodekloud.com  
+spec:
+  group: datasets.kodekloud.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                internalLoad:
+                  type: string
+                range:
+                  type: integer
+                percentage:
+                  type: string
+  scope: Namespaced
+  names:
+    plural: internals
+    singular: internal
+    kind: Internal
+    shortNames:
+    - int    Scenerio 2- Create CR from existing CRD -   Create CR - 
+---
+kind: Internal
+apiVersion: datasets.kodekloud.com/v1
+metadata:
+  name: internal-space
+  namespace: default
+spec:
+  internalLoad: "high"
+  range: 80
+  percentage: "50"  controlplane ~ ➜  k get crd 
+NAME                               CREATED AT
+collectors.monitoring.controller   2025-09-29T05:42:12Z
+globals.traffic.controller         2025-09-29T05:42:12Z
+internals.datasets.kodekloud.com   2025-09-29T05:59:56Z    Scenerio 3 - Identify spec fileds   controlplane ~ ➜   k explain internals.datasets.kodekloud.com controlplane ~ ➜   k explain internals.datasets.kodekloud.com.spec controlplane ~ ✖  k explain internals.datasets.kodekloud.com.spec.internalLoad    controlplane ~ ➜  k explain globals.traffic.controller.spec
+GROUP:      traffic.controller
+KIND:       Global
+VERSION:    v1
+
+FIELD: spec <Object>
+
+
+DESCRIPTION:
+    <empty>
+FIELDS:
+  access        <boolean>
+    <no description>
+
+  dataField     <integer>
+    <no description>  controlplane ~ ➜  cat 5.yaml 
+apiVersion: traffic.controller/v1
+kind: Global
+metadata:
+  name: datacenter
+spec:
+  access: true
+  dataField: 2
+
+controlplane ~ ➜  k create -f 5.yaml  
+global.traffic.controller/datacenter created  controlplane ~ ➜  k get global.traffic.controller/datacenter
+NAME         AGE
+datacenter   13s  Scenerio 4 - get details of CRD -   $ k describe crd globals.traffic.controller
