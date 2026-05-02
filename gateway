@@ -19,3 +19,96 @@ Gateway -  installs  3 custom resources
  gatewayClass -  It is similar to controller , Defines which controller manages gateways 
   gateway Resource - Defines gatewayclass to be used 
   httpRoute - Defines Routing rules , allows HTTP / HTPPs , Weight based Routing , 
+Gateway API - It is a newer version of ingress. 
+
+In ingress, user send a request using http/https , the request reaches to the ingress which is managed by ingress controller. Based on the  rules setup in ingress, the request flows to service and from service to deployment/pods 
+
+Disadvantages of Ingress -
+
+	1. Ingress only support host/path based routing 
+	2. Supports HTTP Routing
+
+Ingress --> SVC -->. Pod 
+Gateway ---> TLS Route --> SVC. ---> Pod 
+
+We can create TLS Route/ HTTP Route / UDP Route  can be http route. Based on the rule mentioned in the route, it will be redirected to svc and then to pod
+
+Advantages of Gateway - 
+
+	1. Gateway API supports HTTP / HTTPS / TCP / UDP routing 
+	2. provides Advanced routing capabilities 
+	3. Supports method based , header based routing , Weight based routing , Traffic splitting , query based routing 
+	4. Distributed as CRDs [ Custom Resource Definition ]. Benefit of using Custom Resource is we can add lot of features based on our need. 
+	
+	
+Components of Gateway API -
+	1. GatewayClass - It is type of load balancing implementation. Defines how a gateway is implemented by a controller. . Gateway class implementation of gateway controller. 
+	GatewayClass defines a type of Gateway, but not an actual instance.Eg - nginx
+	2. Gateway- Actual Load balancer instance which receives the traffic/request from the outside user & based on the HTTProute it sends the request to the required svc & to pods
+	3. HTTPRoute - Routing rules for mapping traffic. Based on http
+
+Gateway receives the HTTP/HTTPs request from external user , Gateway is a implementation class and based on the route configured on the gateway resource  it will redirect to the service and from service to pod 
+
+The Gateway resource is used to define an instance of a Gateway API implementation. It acts as an entry point for traffic into the cluster. GatewayClass defines a type of Gateway, but not an actual instance.
+
+Gateway is layered approach where every component is managed by separate teams - 
+Gateway Class - Infra Team
+Gateway - Cluster Operator
+httpRoute [TCP , UDP, HTTPS , HTTP ] - Application/Development Team 
+
+
+Demo - 
+Install CRDs 
+Install gateway + gateway class [ Deploy nginx gateway ] 
+Deploy APP 
+Create Gateway Resource 
+
+
+
+
+controlplane ~ ✖ kubectl kustomize "https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v1.5.1" | kubectl apply -f -
+customresourcedefinition.apiextensions.k8s.io/gatewayclasses.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/gateways.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/grpcroutes.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/httproutes.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/referencegrants.gateway.networking.k8s.io created
+
+controlplane ~ ➜  kubectl  get crd | grep gateway 
+gatewayclasses.gateway.networking.k8s.io    2025-06-28T15:04:08Z
+gateways.gateway.networking.k8s.io          2025-06-28T15:04:08Z
+grpcroutes.gateway.networking.k8s.io        2025-06-28T15:04:08Z
+httproutes.gateway.networking.k8s.io        2025-06-28T15:04:08Z
+referencegrants.gateway.networking.k8s.io   2025-06-28T15:04:09Z
+
+controlplane ~ ➜  kubectl apply -f https://raw.githubusercontent.com/nginx/nginx-gateway-fabric/v1.6.1/deploy/crds.yaml
+customresourcedefinition.apiextensions.k8s.io/clientsettingspolicies.gateway.nginx.org created
+customresourcedefinition.apiextensions.k8s.io/nginxgateways.gateway.nginx.org created
+customresourcedefinition.apiextensions.k8s.io/nginxproxies.gateway.nginx.org created
+customresourcedefinition.apiextensions.k8s.io/observabilitypolicies.gateway.nginx.org created
+customresourcedefinition.apiextensions.k8s.io/snippetsfilters.gateway.nginx.org created
+customresourcedefinition.apiextensions.k8s.io/upstreamsettingspolicies.gateway.nginx.org created
+
+controlplane ~ ➜  kubectl  get crd | grep nginx
+clientsettingspolicies.gateway.nginx.org     2025-06-28T15:04:15Z
+nginxgateways.gateway.nginx.org              2025-06-28T15:04:15Z
+nginxproxies.gateway.nginx.org               2025-06-28T15:04:15Z
+observabilitypolicies.gateway.nginx.org      2025-06-28T15:04:15Z
+snippetsfilters.gateway.nginx.org            2025-06-28T15:04:15Z
+upstreamsettingspolicies.gateway.nginx.org   2025-06-28T15:04:15Z
+
+
+controlplane ~ ➜  cat gw.yaml 
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: nginx-gateway
+  namespace: nginx-gateway
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: All/Same  ###   Note Default is same 
