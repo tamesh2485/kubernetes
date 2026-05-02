@@ -1,0 +1,105 @@
+Link - https://github.com/CloudWithVarJosh/CKA-Certification-Course-2025/tree/main/Day%2022 
+
+
+What Happens When You Run kubectl delete pod?
+
+kubectl delete pod <pod-name>
+
+
+* Kubernetes initiates a graceful termination sequence rather than an abrupt shutdown.
+* Grace Period & Signals:
+    * SIGTERM: As soon as the delete command is issued, Kubernetes sends the SIGTERM signal to the main process of each container inside the pod. This signal tells the application: “It’s time to shut down gracefully. Please wrap up any ongoing tasks.”
+    * Termination Grace Period: By default, Kubernetes waits for 30 seconds (configurable via terminationGracePeriodSeconds in the pod spec) for the container to exit gracefully.
+    * SIGKILL: If the container does not exit within this grace period, Kubernetes sends a SIGKILL signal to force an immediate shutdown.
+
+
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx- graceful
+spec:
+  terminationGracePeriodSeconds: 30
+  containers:
+  - name: nginx
+    image: nginx:latest
+
+
+Command	API Server (Pod object)	Kubelet (Container termination)	Grace Period Behavior	Explanation
+kubectl delete pod mypod	Deletes Pod gracefully	Kubelet follows normal process	Graceful shutdown	Pod object removed, Kubelet gracefully stops container (SIGTERM, waits for grace period, then SIGKILL) . Default grace period is 30 sec
+kubectl delete pod mypod --force=true	Deletes Pod immediately	Kubelet still respects terminationGracePeriodSeconds	Graceful unless explicitly overridden	Pod object deleted immediately from api server, but Kubelet still monitors the running container and honors the grace period.
+kubectl delete pod mypod --force=true --grace-period=0	Deletes Pod immediately	Kubelet kills container immediately	No grace period, immediate SIGKILL	Pod deleted from API server, Kubelet stops monitoring and forcefully kills the container instantly.
+
+
+Container Restart Policy - 
+
+Restart policy can provide self-healing feature for containers. Pods get automatically restarted. 
+ Restart policy can be - 
+Always [ Default ]  -
+The container is always restarted regardless of its exit code (whether it succeeds with exit code 0 or fails with a non-zero exit code). # kubectl run test-pod --image=busybox -- nonexistentcommand
+
+Never -  The container is not restarted, regardless of the exit code (whether it succeeds or fails). kubectl run test-pod-2 --restart=Never --image=busybox -- nonexistentcommand
+
+OnFailure - 
+The container is restarted only if it exits with a failure (non-zero exit code). If the container exits successfully (exit code 0), no restart occurs.
+
+Image Pull Policies - always, Never , ifNotPresent
+
+a. Always -   	•	Description: The Always policy instructs Kubernetes to always pull the container image from the registry, even if a matching image is already present on the node.
+* Behavior:
+    * Kubernetes pulls the specified image every time the pod starts.
+    * This ensures that the most recent version of the image is used. 
+b.  IfNotPresent 
+* Description: The IfNotPresent policy directs Kubernetes to pull the container image from the registry only if the image is not already available on the node.
+* Behavior:
+    * If the image is present on the node's local cache, Kubernetes uses it without pulling a new version.
+    * If the image is missing, Kubernetes fetches it from the container registry.
+ c. Never
+
+* Description: The Never policy tells Kubernetes to never pull the image from the registry, assuming the image is already present on the node.
+* Behavior:
+    * If the image is not present locally on the node, the pod will fail to start.
+    * Kubernetes does not attempt to contact the registry at all.
+ 5 statges of Pod Lifecycle Phases 
+ In k8s, pods go through several lifecycle phases , from creation to termination. 
+
+Pending - Pod is accepted by kubernetes cluster  but containers are not created. Includes time spent in Scheduling , downloading container images. Pods can also stay in pending phase if there are any issues with scheduling etc 
+Running  -  Pod has been bound to a working node , all the containers are created.  It can also mean at least one container is still running or is in the process to starting or restarting  
+Succeded -  All the containers in the pods has terminated in success and will not be restarted . # k run nginx —image=busybox --restart=Never — sleep 5  
+Failed - All the containers in pod have terminated and at least one container has terminated in failure.  It can be due to Multiple set of reasons such as application crash 
+# k run failed-pod  —image=busybox --restart=Never — fail [ — fail = intentional fail ]  
+Unknown - For some reason the state of pod cannot be obtained. This phase typically occurs due to an error in communicating with the node where the pod should be running 
+
+Note - The status column in kubectl get pods doesn’t always directly map to the official pod lifecycle phases, The STATUS column provides a more human readable summary of the pods current state 
+ # k run failed-pod  —image=busybox --restart=Never — fail [ — fail = intentional fail ]  # k run failed-pod  —image=busybox --restart=Always — fail    
+Phase	Description
+Pending	Pod has been accepted by the Kubernetes cluster, but containers are not yet running. Reasons include image pull delays, unscheduled pods, etc.
+Running	Pod has been scheduled to a node, and all containers are either running or starting.
+Succeeded	All containers in the Pod have terminated successfully (exit code 0), and the Pod won’t restart.
+Failed	All containers have terminated, but at least one exited with failure (non-zero exit code), and is not set for automatic restart.
+Unknown	Kubernetes cannot determine the Pod state, often due to communication issues with the node where the Pod is running. Often because of Infrastructure failures.node is down / unresponsive
+
+Below is a table summarizing the common Pod statuses, their descriptions, causes, and debugging steps:
+Pod Status/Error	Description	Common Causes	How to Debug
+CrashLoopBackOff	Container repeatedly crashes and is restarted with exponential backoff.	- Application errors or bugs
+- Missing dependencies or misconfigurations
+- Resource exhaustion (e.g., OOMKilled)
+- Liveness probe failures	- Inspect logs: kubectl logs <pod-name> or kubectl logs --previous
+- Check environment variables, ConfigMaps, and Secrets.
+- Verify liveness probe setup.
+ImagePullBackOff	Kubernetes is retrying to pull the container image, but previous attempts failed.	- Invalid image name or tag
+- Authentication issues with private registries
+- Network connectivity problems	- Describe Pod: kubectl describe pod <pod-name>
+- Verify image name and tag.
+- Test pulling the image manually (docker pull).
+ErrImagePull	Immediate failure to pull the container image.	- Invalid image or tag
+- Registry authentication issues
+- Registry network connectivity issues	- Same as ImagePullBackOff.
+- Check the Events section with kubectl describe pod.
+OOMKilled	Container terminated because it exceeded its memory limit.	- Application memory leaks or high memory usage
+- Insufficient memory limits in the Pod spec	- Check events: kubectl describe pod <pod-name>
+- Monitor memory usage with kubectl top pod.
+- Adjust memory requests and limits.
+Unknown	Pod state cannot be determined due to node communication failure.	- Node failure or network issues	- Check node status: kubectl get nodes.
+- Investigate node logs for issues.
