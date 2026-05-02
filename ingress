@@ -1,0 +1,43 @@
+Why Ingress ??
+
+To overcome limitations of Load Balancer. 
+For NodePort, we cannot expose the node IP to the internet. nodePort usually is used for within organization and its not good to expose to external customers. 
+
+Problems with Kubernetes Services - 
+	1. It is dependent on  cloud provider. It asks Cloud provider to create LB for svc where load balancer is available in public pvt subnet.
+	2. Security issue - We don’t have control , we are very much dependent on cloud provider. We have to use what is provided. 
+	Services in k8s was not providing Enterprise level load balancing  capabilities. such as path based / host based / whitelisting / black listing / sticky sessions / load based routing/ Ratio based load balancing  etc & TLS loadBalancer 
+	
+	3. Enterprise and TLS Load Balancing Capabilities - Services in K8s was missing Enterprise level Load Balancing capabilities such as sticky session, host based LB , path based , whitelisting / black listing, ratio based LB 
+	4. Cloud Provider charges for each services. Charged for each static public IP. Hence, Load Balancer Service is expensive. 
+
+
+Ingress comes in to picture - 
+	1. Ingress defines routing.  We can perform host based / path based routing, cookie based routing, whitelisting ips , backlisting ips etc
+	2. Ingress can use a single IP address handling all services.
+	3.  Ingress solves the above problem of enterprise load balancing capabilities 
+
+What Ingress Does? 
+
+	▪ User will Create ingress resource defining type of rules they need. They will also decide the type of load balancer they need to use such as f5, nignx etc
+	▪ LB companies  like nginx / F5 etc will write their ingress controller and share steps to install in github etc 
+	▪ As a user, we need to deploy ingress controller using helm etc based on requirement.
+
+What is Ingress? 
+	
+Ingress is written in YAML file, it is ready by controller and controller will provide required access based on ingress 
+Ingress will have no use unless we have ingress controller; ingress controller watch the ingress resource and provide required needs such as  path based / host based etc   
+	
+
+3 process to create to ingress - 
+1. Deploy the ingress controller , This ingress controller will watch for the ingress resource  
+2. Create ingress Resource 
+3. According the rules mentioned in ingress resource, ingress controller will create LB based on rule mentioned. 
+rules can be path based / ratio based  etc. 
+
+
+kubectl create ingress simple --rule="foo.com/bar=svc1:8080,tls=my-cert"
+
+Note - Ingress Controller is nothing but a pod. So to Check if controller exists, 
+
+# kubectl get ingressclass 
