@@ -1,3 +1,145 @@
+Chat GPT - https://chatgpt.com/ 
+Cheetsheet - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-em-use-context-em-
+
+Day-16 - Resource and Limits 
+ 
+Practice links -
+Metric Server Code - https://github.com/piyushsachdeva/CKA-2024/blob/main/Resources/Day16/metrics-server.yaml 
+https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/#specify-a-memory-request-and-a-memory-limit
+
+Day17 - Autoscaling 
+Horizontal pod autoscaling - 
+on increasing load , we are increasing the replicas of pods
+
+Vertical pod  autoscaling -  
+We will resize the existing pod/application to a bigger pod. 
+
+Examples:
+  # Auto scale a deployment "foo", with the number of pods between 2 and 10, no target CPU utilization specified so a
+default autoscaling policy will be used
+  kubectl autoscale deployment foo --min=2 --max=10
+  
+  # Auto scale a replication controller "foo", with the number of pods between 1 and 5, target CPU utilization at 80%
+  kubectl autoscale rc foo --max=5 --cpu-percent=80
+
+Metric Server Code - https://github.com/piyushsachdeva/CKA-2024/blob/main/Resources/Day16/metrics-server.yaml 
+
+Deployment code - https://github.com/piyushsachdeva/CKA-2024/blob/main/Resources/Day17/readme.md?plain=1 
+
+# kubectl   autoscale deployment    php-apache.  --min=2 --max=10 --cpu-percent=80
+
+controlplane $ k get hpa 
+NAME         REFERENCE               TARGETS              MINPODS   MAXPODS   REPLICAS   AGE
+php-apache   Deployment/php-apache   cpu: <unknown>/50%   1         10        0          3s
+
+Increase the load - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/ 
+kubectl run -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache; done"
+
+controlplane $ k get hpa -w 
+NAME         REFERENCE               TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+php-apache   Deployment/php-apache   cpu: 0%/50%   1         10        1          3m44s
+php-apache   Deployment/php-apache   cpu: 152%/50%   1         10        1          3m45s
+
+
+Day 18/40 - Kubernetes Health Probes 
+
+Healthprobes in k8s - https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+probes are process that monitors/inspects  the cluster and help in restore to healthy state
+
+In general probing means inspecting/monitoring 
+
+Ensures apps  are self healing, apps are healthy  
+startup - Used for slow/legacy container apps , applications that takes time to startup. The kubelet uses startup probes to know when a container application has started. If such a probe is configured, liveness and readiness probes do not start until it succeeds, making sure those probes don't interfere with the application startup.
+
+readiness - Monitors the applications  & Ensures application is ready b4 it starts serving traffic to user. The kubelet uses readiness probes to know when a container is ready to start accepting traffic. A Pod is considered ready when all of its containers are ready. 
+
+liveness  - Monitors the applications , restart the application if fails . After a while , If it doesn't fix the issue upon restarting, it will give us alert.The kubelet uses liveness probes to know when to restart a container. For example, liveness probes could catch a deadlock, where an application is running, but unable to make progress. Restarting a container in such a state can help to make the application more available despite bugs.
+
+initialDelaySeconds: 3 - Before performing first health check , it will wait for 3 secs 
+periodSeconds: 2 - frequency of healthcheck 
+
+
+Day 20/40 - SSL/TLS Explained Simply - How SSL/TLS Works?
+
+Symmetric Encryption -Same key is used to encrypt  and decrypt by both user and server and the encrypted key has to pass through the internet, so it is not secure as hackers can sniff the encrypted key
+
+Asymmetric Encryption- We will use pub and priv key, pub key will be shared over the internet and priv key will be used to encryption 
+
+Adam User joins  -As a admin you need to give access to adam user to access the cluster 
+
+Adam user will go and create key and CSR - 
+
+openssl genrsa -out myuser.key 2048
+openssl req -new -key myuser.key -out myuser.csr -subj "/CN=myuser"
+
+openssl genrsa -out adam.key 2048. --> # pvt key 
+openssl req -new -key adam.key  -out adam.csr -subj "/CN=myuser" ## Generate CSR
+
+Adam user will share the CSR - As a Admin user , you will create a file csr.yaml , We need to replace the csr to encoded format
+
+Convert to base64 - 
+cat myuser.csr | base64 | tr -d "\n"
+cat adam.csr   | base64 | tr -d "\n"
+
+9167024094 ah
+
+Copy the encoded form and put it in csr.yaml file next to request -
+
+# cat csr.yaml 
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: adam
+spec:
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1ZqQ0NBVDRDQVFBd0VURVBNQTBHQTFVRUF3d0dZVzVuWld4aE1JSUJJakFOQmdrcWhraUc5dzBCQVFFRgpBQU9DQVE4QU1JSUJDZ0tDQVFFQTByczhJTHRHdTYxakx2dHhWTTJSVlRWMDNHWlJTWWw0dWluVWo4RElaWjBOCnR2MUZtRVFSd3VoaUZsOFEzcWl0Qm0wMUFSMkNJVXBGd2ZzSjZ4MXF3ckJzVkhZbGlBNVhwRVpZM3ExcGswSDQKM3Z3aGJlK1o2MVNrVHF5SVBYUUwrTWM5T1Nsbm0xb0R2N0NtSkZNMUlMRVI3QTVGZnZKOEdFRjJ6dHBoaUlFMwpub1dtdHNZb3JuT2wzc2lHQ2ZGZzR4Zmd4eW8ybmlneFNVekl1bXNnVm9PM2ttT0x1RVF6cXpkakJ3TFJXbWlECklmMXBMWnoyalVnald4UkhCM1gyWnVVV1d1T09PZnpXM01LaE8ybHEvZi9DdS8wYk83c0x0MCt3U2ZMSU91TFcKcW90blZtRmxMMytqTy82WDNDKzBERHk5aUtwbXJjVDBnWGZLemE1dHJRSURBUUFCb0FBd0RRWUpLb1pJaHZjTgpBUUVMQlFBRGdnRUJBR05WdmVIOGR4ZzNvK21VeVRkbmFjVmQ1N24zSkExdnZEU1JWREkyQTZ1eXN3ZFp1L1BVCkkwZXpZWFV0RVNnSk1IRmQycVVNMjNuNVJsSXJ3R0xuUXFISUh5VStWWHhsdnZsRnpNOVpEWllSTmU3QlJvYXgKQVlEdUI5STZXT3FYbkFvczFqRmxNUG5NbFpqdU5kSGxpT1BjTU1oNndLaTZzZFhpVStHYTJ2RUVLY01jSVUyRgpvU2djUWdMYTk0aEpacGk3ZnNMdm1OQUxoT045UHdNMGM1dVJVejV4T0dGMUtCbWRSeEgvbUNOS2JKYjFRQm1HCkkwYitEUEdaTktXTU0xMzhIQXdoV0tkNjVoVHdYOWl4V3ZHMkh4TG1WQzg0L1BHT0tWQW9FNkpsYWFHdTlQVmkKdjlOSjVaZlZrcXdCd0hKbzZXdk9xVlA3SVFjZmg3d0drWm89Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=
+  signerName: kubernetes.io/kube-apiserver-client
+  # expirationSeconds: 86400  # one day
+  usages:
+  - client auth
+
+# k apply -f  csr.yaml  
+
+# k get csr 
+
+Approve the CertificateSigningRequest 
+kubectl certificate approve myuser
+
+kubectl certificate approve adam
+ As Admin user , you will need to share to adam user -
+kubectl get csr/adam -o yaml
+
+# kubectl get csr/adam -o yaml > issuecert.yaml [ ## This will be encoded format ]
+We will need to decode and share it to the user 
+
+# echo "XXXX" | base64  -d 
+
+Day 22/40 - Kubernetes Authentication and Authorization Simply Explained
+
+Authorization- 
+1 -ABAC - Attribute based authentication - 
+Check whether has required permissions 
+associate set of perms to a user, add permissions to a file [ policy file] , add that file to api server , need to restarting api-server is needed. This has to be taken care whenever we need to grant access
+
+2 -RBAC - We create a role and assign the role to a user/group. We don’t have to restart api-server
+
+3 - NODE- allows nodes to interact with each other 
+4 - Webhook - We used 3rd party to manage access policies 
+
+# k auth can-i get pod
+# k auth whoami
+# k auth can-i get pod --as adam
+# k get roles
+# k describe role role_name
+# k get rolebindings
+# k get roles -A --no-headers | wc -l 
+# k config set-credentials adam \ 
+   --client-key=
+   --client-certificate=
+   # k  config set-context adam --cluster=kind-cka-cluster2 --user=adam 
+#  
+
+
+######
 Requests and Limits can be based on memory, Cpu, ephemeral-storage etc. 
 
 Request - Minimum resource guaranteed [ typically cpu/memory ]
