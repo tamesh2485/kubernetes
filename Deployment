@@ -1,0 +1,48 @@
+Rollout & Versioning - 
+Rollout command - 
+# kubectl    rollout status deployment/deployment_name 
+
+Revision command - 
+# kubectl    rollout history  deployment/deployment_name 
+
+Deployment Strategy - 
+Recreate Strategy - [ we delete all the pods and create all the pods , There is downtime ] . Replica Set scale down to 0 & then brought up 
+Rolling update - We delete a pod and bring up a new pod with updated version one by one [ no downtime ] , Default deployment strategy 
+
+Apply update process- 
+1 -Update the container image in deployment file 
+2 - kubectl set image deployment deployment_name container-name=version [ in doing so , defination file will not change ] 
+kubectl set image deployment/nginx-deployment nginx=nginx:1.161
+See the status of Updates - 
+kubectl rollout status deployment/nginx-deployment
+undo a change/ Roll back  -  [ The rollout gets stuck. You can verify it by checking the rollout status: ]
+kubectl rollout history deployment/nginx-deployment
+kubectl rollout history deployment/nginx-deployment --revision=2 
+Deployment strategies -
+1. Rolling update - we have MaxSurge and MaxUnavailalbe
+2. Recreate - There is downtime 
+3. Canary Deployment/Green & Blue Deployment/Red & Black Deployment - There is no downtime, we have MaxSurge and MaxUnavailalbe. Also, it supports weighted based
+
+.spec.strategy.rollingUpdate.maxUnavailable is an optional field that specifies the maximum number of Pods that can be unavailable during the update process. The value can be an absolute number (for example, 5) or a percentage of desired Pods (for example, 10%). The absolute number is calculated from percentage by rounding down. The value cannot be 0 if .spec.strategy.rollingUpdate.maxSurge is 0. The default value is 25%.
+
+.spec.strategy.rollingUpdate.maxSurge is an optional field that specifies the maximum number of Pods that can be created over the desired number of Pods. The value can be an absolute number (for example, 5) or a percentage of desired Pods (for example, 10%). The value cannot be 0 if maxUnavailable is 0. The absolute number is calculated from the percentage by rounding up. The default value is 25%.
+
+…
+ strategy:
+   type: RollingUpdate
+   rollingUpdate:
+     maxUnavailable: 1
+…
+ strategy:
+   type: RollingUpdate
+   rollingUpdate:
+     maxSurge: 1
+
+…
+ strategy:
+   type: RollingUpdate
+   rollingUpdate:
+     maxSurge: 1
+     maxUnavailable: 1
+
+
