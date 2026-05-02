@@ -1,0 +1,75 @@
+
+Kubernetes Networking Model -   Every POD should have an IP address Every POD should be able to communicate with every other POD in the same node  Every POD Should be able to communicate with every other POD on other nodes without NAT 
+
+ Each node will have its own IP 
+Whenever a container is started , a unique network namespace is created. These network namespace  must be connected to a network to allow inter container communication. 
+Assign a bridge network to each node , Add a subnet to each bridge. 
+
+ When a container is created , a cable [ veth pair ] is connected to network namespace of the container and bridge network of the node . An ip is assigned & a route to default gateway is configured before enabling the interface. 
+
+Executing this script on each node ensures that all containers receive an IP address and are connected to their respective internal networks.  Cross-Node Communication
+One of the challenges is enabling communication between pods on different nodes -To resolve this, add a route on node 1 that directs traffic for 10.244.2.2 via node 2’s external IP (e.g., 192.168.1.12):
+
+In our lab setup, we executed scripts manually to configure pod networking. However, in a production Kubernetes environment where thousands of pods may be created per minute, this manual approach is not feasible. 
+This is where the Container Network Interface (CNI) becomes essential. CNI specifies how Kubernetes should invoke a networking script each time a pod is created. To conform with CNI standards, the networking script must have:
+* An "add" section to connect the container to the network.
+* A "delete" section to disconnect the container, remove interfaces, and free up the IP address. 
+Some CNIs are - Calico , flannel, weave , cilium etc 
+When the container runtime launches a container, it uses the CNI configuration  to execute the relevant script with the command "add" and pass the container’s name and namespace identifier.  CNI in Kubernetes - 
+ The CNI [flannel, weave, calico etc ]  specifies the responsibilities of Container Runtime.  CRI such as Containerd or CRI-O create the container network namespaces and attach them to the correct network by invoking the appropriate network plugin. Location of network plugins - /opt/cni/bin and the configuration files that dictate which plugin to use are stored in /etc/cni/net.d
+
+
+In this configuration:
+* The "name" field (e.g., "mynet") represents the network name.
+* The "type" field set to "bridge" indicates the use of a bridge plugin.
+* The "bridge" field (e.g., "cni0") specifies the network bridge's name.
+* The "isGateway" flag designates whether the bridge interface should have an IP address to function as a gateway.
+* The "ipMasq" option enables network address translation (NAT) through IP masquerading.
+* The "ipam" (IP Address Management) section uses "host-local" to allocate IP addresses from the specified subnet ("10.22.0.0/16") and defines a default route.
+  Weave CNI -   The Weave CNI plugin deploys an agent on each Kubernetes node. These agents exchange information about nodes, networks, and pods to maintain a complete topology of the cluster.  Each node runs a Weave bridge, allowing dynamic IP address assignment.
+ Keep in mind that a pod may be connected to multiple bridge networks (e.g., both the Weave bridge and the Docker bridge). The container's routing configuration controls the path a packet follows, and Weave ensures that each pod has the correct route through its assigned agent.   When sending a packet to a pod on another node, Weave intercepts, encapsulates, and routes it using updated source and destination details. At the destination node, the corresponding Weave agent decapsulates the packet and delivers it to the intended pod.
+  IP Address Management -   How Pods get IP ?   As per CNI  - It is CNI plugin provider  responsibility to assign ip to pods  CNI comes with two built in plugins such as DHCP and host-local   Rather than implementing custom IP assignment logic, you can leverage built-in IPAM plugins provided by the CNI. The host-local plugin, for instance, manages IP addresses locally on each node 
+
+
+ How Kubernetes Manages Service Networking
+Let’s start with a clean slate. Picture a three-node Kubernetes cluster that has no pods or services deployed yet.  Each node runs a Kubelet process, responsible for pod creation by communicating with the Kube API Server and invoking the CNI plugin to configure networking.  In parallel, every node also runs a Kube Proxy, which monitors cluster changes via the API Server and sets up forwarding rules whenever a new service is created.  Unlike pods that have their dedicated network interfaces, services are virtual constructs spanning the entire cluster.   When you create a service object, Kubernetes automatically assigns it an IP address from a predefined range (set via the Kube API Server’s --service-cluster-ip-range option). The kube-proxy on each node then configures the appropriate forwarding rules so that any traffic targeted at the service's IP and port is correctly routed to the backend pod.  Whenever a pod sends traffic to a service IP, the kube-proxy rules step in to forward that traffic to the chosen backend pod. These rules are dynamically updated as services are created or removed.   Kube Proxy supports several proxy modes, including user space, iptables, and IPVS (with iptables being the default unless specified otherwise).
+
+Nodes receives ip address from ethernet Pods receives IP address from CNI plugin - We can see pod cidr under kube-controllermanager pod description  Service receives IP address from Kubernetes using glag - --service-cluster-ip-range=10.96.0.0/12 found at /etc/kubernetes/manifests/kube-apiserver.yaml To see type of proxy - k logs kube-proxy   controlplane ~ ➜  k -n kube-system logs kube-proxy-9jr8k
+I0927 16:24:45.605163       1 server_linux.go:63] "Using iptables proxy" 
+
+ Delete of existing CNI plugin -   Delete cni pod- we can get info about it by seeing config file  under -  /etc/cni/net.d/ Delete cm related to cni plugin  rm -rf /etc/cni/net.d/10-flannel  Installation of Calico -   Ref Link - https://docs.tigera.io/calico/latest/getting-started/kubernetes/quickstart 
+    DNS in Kubernetes -   When we deploy a k8s cluster, it comes with a DNS server.
+
+Imaging a scnerio with 3 nodes and many pods / services are running on them.  The node ips are mapped in internal org DNS server.   lets say we have a test pod and a app pod with the service name web-service . Test pod is trying to connect with web-service  of app pod in the same namespace. 
+
+When web-service is created, k8s provides an ip and the service is mapped to its ip in  the internal DNS server in the cluster.  so  ping web-service   lets say  if test pod from default ns is trying to connect with web-service in app ns.   ping web-service.app  Note- Each namespaces  get a sub domain in k8s. All the services within the namespace are grouped together  to a sub domain called svc.   Additionally, the entire cluster is associated with a root domain (by default, cluster.local). Thus, the fully qualified domain name for a service in the "apps" namespace is:
+web-service.apps.svc.cluster.local
+ # When the service is in the default namespace
+curl http://web-service
+# When the service resides in the 'apps' namespace
+curl http://web-service.apps
+# Using the fully qualified domain name (FQDN)
+curl http://web-service.apps.svc.cluster.local
+# Output: Welcome to NGINX!
+ Now, let’s discuss pod DNS records. By default, DNS records for pods are not created. However, this behavior can be explicitly enabled. When pod DNS records are activated, Kubernetes generates a DNS record for each pod by converting the pod’s IP address into a hostname—replacing dots (.) with dashes (-). The record includes the pod's namespace, is set to type "pod," and utilizes the cluster's root domain.
+For example, if a test pod in the default namespace has the IP 10.244.2.5, the corresponding DNS record becomes:
+10-244-2-5.apps.pod.cluster.local
+ Kubernetes does not create DNS entries for individual pods manually. Instead, it sets up DNS records for services, and for pods, it converts IP addresses into hostnames by replacing dots with dashes.    CoreDNS in Kubernetes -   When we deploy a k8s cluster, it comes with a DNS server.  Imagine you have two pods with different IP addresses. One approach to enable communication between them is to add an entry into each pod’s hosts file [/etc/hosts] . For instance, on the first pod, you might map the second pod (named "web") to IP 10.244.2.5, and on the second pod, map the first pod (named "test") to IP 10.244.1.5. However, when dealing with thousands of pods that are frequently created and removed, manually managing these entries becomes impractical.  Instead of manually editing hosts files, Kubernetes deploys a central DNS server. Each pod is pre-configured via its /etc/resolv.conf file to use this centralized server (typically at 10.96.0.10), which automatically updates DNS records for new pods and services.  k8s doesn’t create dns entries for individual pods. Instead, it sets up DNS records for services, and for pods, it converts IP addresses into hostnames by replacing dots with dashes.  Before Kubernetes version 1.12, this service was known as Kube-DNS. Starting with version 1.12, however, the recommended DNS server is CoreDNS, which brings enhanced flexibility and performance.   CoreDNS requires a configuration file—commonly named "Corefile" and located at /etc/coredns/Corefile—that outlines various plugins used to process DNS queries.   Note that this configuration is stored in a ConfigMap by the name - coredns  in kube-system. .    Once the CoreDNS pod is running with the correct configuration, it continuously monitors the Kubernetes API for new pods and services, allowing DNS records to be updated dynamically.  CoreDNS server helps to map pod and service names to their current IP addresses. To enable pods to communicate with the CoreDNS server, Kubernetes creates a service (named kube-dns by default) with the IP address 10.96.0.10. This IP is automatically set as the primary nameserver in all pod /etc/resolv.conf files.  kubectl get service -n kube-system
+NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)           AGE
+kube-dns     ClusterIP   10.96.0.10     <none>        53/UDP,53/TCP     1d
+ A typical pod’s /etc/resolv.conf file will appear as:  cat /etc/resolv.conf
+nameserver 10.96.0.10
+search default.svc.cluster.local svc.cluster.local cluster.local
+ This configuration is automatically managed by the Kubelet. If you inspect the Kubelet configuration file, you will find entries for both the cluster DNS and the cluster domain: cat /var/lib/kubelet/config.yaml
+...
+clusterDNS:
+- 10.96.0.10
+clusterDomain: cluster.local
+ With the correct DNS configuration, pods can resolve services using different domain name formats. For example, if you have a web service deployed in your cluster, you can access it using any of the following names:
+* web-service
+* web-service.default
+* web-service.default.svc
+* web-service.default.svc.cluster.local
+  The replicaset that runs DNS server is core-dns . it usually runs 2 pods for high availability under kube-system. Corefile location -  /etc/coredns/Corefile
+The service that runs for DNS server is kube-dns under kube-system.  ConfigMap by the name -coredns configmap in kube-system. .  
+
