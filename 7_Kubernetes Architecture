@@ -1,0 +1,181 @@
+ Pod is the most basic and smallest deployable unit in Kubernetes.  A pod can have single / multiple containers sharing network / storage.   A Pod can have one or two containers. .. 
+ SideCar Container Scenerios - 
+Container 1 running main application, Container 2 collecting logs from main application and dumping on to simple login server 
+
+Container 1 running main application, Container 2 collecting  cpu / memory application specific stats from main container  and sending to repository 
+ Container 1 running main application, Whenever connection has to made outside, we using proxy Container 2 to do the same 
+ Container 2 [ secondary container ] acting as reverse proxy. When someone from outside connects, they will hit container2 and from container 2 it will be connected to container 1 [ main application ]
+
+
+What are Network namespaces?
+
+* Network namespaces in Kubernetes provide an isolated network environment for each Pod. Each Pod has its own unique network namespace, which means it has its own IP address, network interfaces, and routing tables.
+* All containers within a Pod share the same network namespace, meaning they can communicate with each other using localhost and have direct access to each other’s ports.
+* This isolation ensures that Pods can communicate with each other using their internal IPs, but also keeps them separated from other Pods' networks within the cluster.
+ What is a Deployment?
+ Deployment maintains desired no. of replicas of pod. Supports rolling update / rollback , Declarative configuration, Replica management   
+The K8s usually runs on control plane and worker nodes. 
+
+K8s control plane is considered to be master node, It manages the worker nodes and the pods in the cluster. 
+The control plane's components make global decisions about the cluster (for example, scheduling), as well as detecting and responding to cluster events (for example, starting up a new pod when a Deployment's replicas field is unsatisfied).
+ We can have 1 Controlplane or multiple controlplane, Control plane components can be run on any machine in the cluster. However, for simplicity, setup scripts typically start all control plane components on the same machine, and do not run user containers on this machine.   Worker nodes are the nodes where the pods run/ application runs. 
+
+Important Components of Control Plane are -  1 - kub-api-server -
+*  It is the component that exposes the Kubernetes API, It is the heart of K8s. Each component interacts with the kube-api-server.
+
+2- ETCD - 
+* It is highly available key-value pair data store that stores cluster configuration data . 
+
+3 - Scheduler -  It is the component thot looks for pods for which nodes are not assigned and assign nodes to them. Factors can be many such as affinity/anti-affinity , Taints and Tolerations , Resource Availability , workload, individual and collective resource requirements, hardware/software/policy constraints
+
+4- Controller - 
+* Ensures cluster maintains the desired state . It manages the lifecycle of K8s. It watches the cluster & It ensures desired state is met through out.   There are many controllers such as -  Node controller - Ensure nodes are up and running 
+* serviceAcoountController - Creates Service Account in new namespaces 
+* Deployment controller , job controller 
+
+If we are on cloud, we use cloud controller -   5 - cloud-controller-manager
+
+* Integrates Kubernetes with the cloud provider.
+* It is the component that allows kubernetes to use cloud services such as load balancer, Managing nodes . Attaching/detaching volumes  ,IAM , KMS service  etc. 
+* When k8s wants to leverage cloud features such as load balancer , IAM , KMS service , ccm helps k8s to connect with cloud apis 
+
+K8s was built to work anywhere. However K8s doesn’t have idea to interact with cloud special features  such as load balancer , storage disks  , IP Addresses
+
+Cloud controller manager - It makes sure Kubernetes can use cloud services (load balancers, volumes, etc.) by acting as a bridge between Kubernetes and your cloud provider. 
+When k8s wants to leverage cloud features such as load balancer , IAM , KMS service , ccm helps k8s to connect with cloud apis 
+
+############
+
+
+Node components run on every node, maintaining running pods and providing the Kubernetes runtime environment.
+
+1 - Kubelet - It performs health check of pods , ensures containers are running. It runs on each node, interacts with kube-api-server and ensures containers  are running in a pod as expected.
+Each node runs a Kubelet process, responsible for pod creation by communicating with the Kube API Server and invoking the CNI plugin to configure networking.   Kubelet communicate with api-server about pod specs to be configured,  Communicates the information to  Container Runtime, Container Runtime pulls the required images  and invoking the CNI plugin to configure networking 
+2 - Kube-proxy - Handles networking rules [ iptables ]  .   Manages service to pod communication. In parallel, every node also runs a Kube Proxy, which monitors cluster changes via the API Server and sets up forwarding rules whenever a new service is created.  It is a traffic director in k8s . It takes care of service to pod routing , Kube-proxy maintains routing table  Performs load distribution - which pod should receive traffic 
+performs health check - ensures traffic is routed to healthy pod 
+ 3- Container Runtime - Software / Engine that runs containers. such as crio , container-d , podman  etc.  .  A fundamental component that empowers Kubernetes to run containers effectively. 
+Kubernetes supports container runtimes such as containerd, CRI-O, and any other implementation of the Kubernetes CRI (Container Runtime Interface).
+
+Manages pod-to-pod networking across the cluster. This usually runs as Daemon-set 
+ Apart from the above , we have coreDNS [ for name resolution ] , when 2 micro services want to communicate / discover  with other internally  , it can communicate using the names. coreDNS is for name resolution 
+Responsibilities of CRI, CNI, and CSI in Kubernetes
+ We Have coreDNS for name resolution  
+(The responsibilities listed below are indicative, not exhaustive.)
+CRI (Container Runtime Interface) - Manages Container Lifecycle
+* Pulls container images from registries.
+* Starts, stops, and deletes containers.
+* Manages container networking via CNI integration.
+* Allocates resources like CPU and memory to containers.
+* Ensures compatibility with Kubernetes via standardized gRPC APIs. 
+CNI (Container Network Interface) - Manages Pod Networking
+* Assign IP addresses to pods 
+* Enables communication between pods across nodes.
+* Manages network policies for security and isolation.
+* Assign network interface for pods
+* IPAM [ IP address management ] 
+* Allows to use solutions like flannel, calico , weave 
+* Define CNI standards 
+* Provides network metrics and observability features. 
+CSI (Container Storage Interface) - Manages Storage for Pods
+* Dynamically provisions persistent storage for workloads.
+* Supports mounting and unmounting of storage volumes.
+* Handles volume resizing, snapshots, and backups.
+* Ensures data persistence across pod restarts.
+* Integrates with various cloud and on-prem storage providers.
+* Manages access controls and multi-node storage sharing.
+
+
+
+ There are certain cni plugins that can perform functions of kube-proxy. Eample - calico , cilium 
+
+
+
+Static Pods
+
+Why Do We Need Static Pods?
+
+* Essential for Control Plane Components: Kubernetes components like kube-apiserver, etcd, and kube-scheduler run as static pods.
+* Guaranteed Scheduling: They always run on a specific node, even if the API server is down.
+What Are Static Pods?
+
+Static pods are created and managed by the Kubelet on a node, not by the Kubernetes API server.
+📌 Static pods are defined in /etc/kubernetes/manifests/.
+Unlike regular pods, static pods are not managed by the Kubernetes API server, meaning you cannot modify them using kubectl commands. Instead, they are directly managed by the kubelet on each node, and any changes require modifying or deleting the static pod manifest file on the node itself.
+Static pods can be defined on any node, including both control plane and worker nodes. However, they are not scheduled by the Kubernetes Scheduler—instead, they are directly managed by the kubelet running on the node where their manifest exists.
+Static Pods are always bound to one Kubelet on a specific node.
+
+
+Why Does kubectl delete Not Permanently Remove Static Pods?
+
+kubectl delete pods nginx-static-pod-my-second-cluster-control-plane
+
+🚨 This deletes the pod, but it will be recreated! Since static pods are managed directly by the kubelet, it detects their absence and automatically recreates them if their YAML files still exist.
+📌 To permanently remove a static pod, delete its manifest file:
+rm /etc/kubernetes/manifests/static-pod.yaml
+
+Once the YAML file is removed, the kubelet stops recreating the pod.
+
+
+Mirror Pods in Kubernetes
+
+When a static pod is created, the kubelet automatically generates a corresponding "mirror pod" on the Kubernetes API server. These mirror pods allow static pods to be visible when running kubectl get pods, but they cannot be controlled or managed through the API server.
+How Mirror Pods Work
+
+* The Kubelet detects static pod manifests from /etc/kubernetes/manifests/.
+* It creates and manages the static pod independently from the Kubernetes control plane.
+* To ensure visibility in kubectl get pods, Kubelet creates a "mirror pod" on the API server.
+* However, this mirror pod is read-only—it cannot be modified, deleted, or controlled using kubectl.
+
+
+4. When we run kubectl create deploy ? Explain the flow
+Step 1 - Request goto API , API performs authentication & authorization / Validation 
+
+Step 2 -authentication -Api performs authentication - who are you -  through SA , through certificate  through kubeconfig file in bastion node , usually we don’t get  access to master nodes hence bastion node 
+ kubeconfig file path -  Path: ~/.kube/config (or /home/<username>/.kube/config)
+ API Super user = kubernetes-admin  [ by default it uses certificate based authentication - /etc/kubernetes/admin.conf ]  
+Step 3 - authorization - Api performs authorization  - what are you allowed to do RBAC ?  API ensure command that we execute which role binding is configured with the user 
+ What role binding is associated with he user  for the command that he is running  
+Step 4: Validation & Admission Control 
+API Server validates:
+YAML syntax
+required fields
+Admission controllers may modify or reject the request
+ 
+Step 5 - The deployment object is stored in etcd in key value format  
+
+Step 6 - Scheduler - Check on which node the  pod will be placed 
+
+Step 7 - Kubelet on the worker node receives the instruction from scheduler through API 
+
+Step 8 - Kubelet pass the info to containerd ,  containerd pull the image Pod
+
+Step 9 - Pod gets IP ,  gets connected to CNI [ Calico ] 
+
+Step 10 - Controllers continuously ensure:
+desired state = actual state
+👉 If Pod dies → recreated automatically
+  4. When we run kubectl get  deploy ? Explain the flow
+
+Step 1 - Request goto API , API performs authentication & authorization
+
+Step 2 - authentication - through SA , through certificate  through kubeconfig file in bastion node , usually we don't get  access to master nodes hence bastion node
+Super Admin of Kubernetes  - kubernetes-admin, it performs certificate authentication [ /etc/Kubernetes/admin.conf ]  by default
+
+Step 3 - authorization - API ensure command that we execute which role binding is configured with the user
+
+
+Step 4 - API Server queries etcd and get the info 
+
+
+Step 4 - API Server queries etcd and get the info 
+
+5. Which component manages the core application such as kube-api , scheduler , etcd & controller ? 
+They all run based on static pod concept. /etc/Kubernetes/manifests. Kubelet maintains the static pod state through /var/lib/kubelet/config.yaml. Static pods are not maintained my kube-api server rather by kubelet
+staticPodPath: /etc/Kubernetes/manifests
+ 6. kubectl get nodes
+The connection to the server 192.168.22.1.6443 was refused - did you specify the right host or port ? 
+kubectl cannot reach the API Server — either the server is down, unreachable, or misconfigured.”  
+vi /var/lib/kubelet/config.yaml 
+## staticPodPath: /etc/Kubernetes/manifests
+
+uncomment it and restart kubelet 
