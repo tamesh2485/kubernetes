@@ -27,3 +27,491 @@ Docker Port -
 # docker run  -p 80:5000 -it kodekloud/webapp
 80 - host port 
 5000 - container port   Docker Volume-   # docker run  -v /opt/datadir:/var/lib/mysql  mysql  # dock inspect container_id   # docker logs   container_id   # docker run ubuntu:17.10 cat /etc/os-release   # docker run ubuntu sleep 1000 
+
+
+Challenges with Traditional Deployment Approaches:
+	1. Dependency Management:
+		○ Different operating systems, libraries, and configurations across environments lead to inconsistencies.
+		○ Example: Development uses Python 3.4, but production runs Python 3.1, causing compatibility issues.
+	2. Inefficient Resource Usage:
+		○ Running multiple Virtual Machines (VMs) for different applications increases overhead.
+		○ Hosting multiple applications on a single VM leads to resource contention.
+	3. Complex & Error-Prone Deployment:
+		○ Manual configurations across development, testing, and production environments introduce human errors.
+		○ Each environment may require different settings, leading to deployment failures.
+	4. Lack of Isolation:
+		○ Applications running on the same VM can conflict due to shared dependencies, ports, or configurations.
+		○ Example: Two applications requiring different versions of the same library can lead to unexpected failures.
+Solution? → Docker Containers
+
+
+Before Docker
+	• Applications were manually loaded into environments alongside their dependencies, leaving them vulnerable to configuration mismatches between development, testing, and production environments.
+	• If your production server had a different setup than your development machine, issues could arise.
+With Docker
+	• Applications, along with their dependencies, are packaged into containers.
+	• These containers ensure consistency across all environments (development, testing, and production), solving compatibility issues and speeding up the software lifecycle.
+	
+
+
+
+ ✅  Difference b/n Docker and VM? 
+
+VM virtualizes the h/w, Runs a full guest OS on top of the hypervisor.  The images huge in size / heavier [ in Gbs] Slow to start , use lot of resources , It is h/w level isolation  
+
+Docker virtualises the OS , Shares the Host OS  kernel & it packages the application and its dependencies. Hence, They are light weight , bootup fast , sizes in mb , process level isolation , Uses less resource 
+
+Docker is a platform that allows you to build, package, and run applications inside containers.
+A container is a lightweight, isolated environment that contains everything your app needs to run—without affecting or depending on the host system. 
+
+Container → the box that holds everything [ code , libraries etc ] your app needs to run. It is the running instance of docker image. 
+
+1. A Dockerfile is a text file containing instructions that Docker uses to build a Docker image.
+2. Docker Images:
+IT acts as template from which containers are created. It consists of application code, libraries , dependencies , config files etc 
+Built from a Dockerfile, which contains instructions like:
+	• Base image
+	• App code
+	• Dependencies
+	• Startup command
+3. Docker Containers:
+ It is the running instance of the Docker Images 
+Containers are:
+	• Lightweight
+	• Isolated from each other
+	• Faster than virtual machines
+
+A container is a lightweight, standalone package that includes:
+	• Your application code
+	• The runtime (like Python, Node.js, Java, etc.)
+	• System tools and libraries it needs
+4. Docker Registries:
+Storage locations for Docker images, such as Docker Hub.
+5. Docker Engine:
+The core component that powers Docker. Docker Engine contains - Docker CLI / docker client , Rest API &  Docker Daemon
+Docker Engine Components
+	• Docker CLI: Acts as the dashboard, letting you issue commands.
+	• REST API: Translates CLI commands (e.g., docker run) into HTTP requests for the Docker Daemon. This enables automation and integration with external tools.
+	• Docker Daemon: The “engine” that handles pulling images, building containers, and other core functions.
+
+
+• The Docker Daemon is the core of Docker.
+• It:
+	• Builds images
+	• Runs containers
+	• Manages networks and volumes
+Listens for requests from the Docker Client.
+
+7. Docker Networking
+	• Docker provides networking to allow:
+		○ Container-to-container communication
+		○ Container-to-host communication
+
+
+docker run nginx
+
+docker run nginx
+
+docker ps
+
+To list all containers, including those that have stopped or exited, add the -a flag:
+docker ps -a
+
+stop the container by running: - 
+docker stop silly_sammet
+
+remove a stopped container - 
+
+docker rm silly_sammet
+
+List images - 
+
+docker images
+REPOSITORY          TAG       IMAGE ID       CREATED        SIZE
+nginx               latest    f68d6e55e065   4 days ago     109MB
+redis               latest    4760dc956b2d   15 months ago  107MB
+ubuntu              latest    f975c503748    16 months ago  112MB
+alpine              latest    3fd9065eaf02   18 months ago  4.14MB
+
+
+To delete an image no longer needed, ensure no container is using it and execute:
+
+docker rmi nginx
+
+Additionally, if you want to download an image for later use without running a container immediately, use the docker pull command:
+
+docker pull nginx
+
+When using the Ubuntu image, simply running:
+docker run ubuntu
+
+
+docker run ubuntu sleep 5
+
+
+ Running the container in the foreground displays the application's output directly in your terminal:
+
+docker run kodekloud/simple-webapp
+
+To run the web application in detached (background) mode, add the -d option:
+
+docker run -d kodekloud/simple-webapp
+
+If you need to reattach to the container, use the docker attach command along with the container ID (a shortened unique prefix is acceptable):
+
+docker attach a043d
+
+
+When using a base image like CentOS without specifying a command, the container will exit immediately since there is no process running. To keep the container active, launch it with an interactive shell:
+
+# docker run -it centos bash
+
+Run a container with the nginx:1.14-alpine image and name it webapp
+
+#  docker run -d --name=webapp nginx:1.14-alpine
+
+To remove all unused Docker images — that is, images not being used by any containers — you can use a simple Docker command.
+# docker image prune -a
+            OR                 
+# docker image prune -a -f
+
+• docker image prune → removes unused images
+• -a (or --all) → removes all images not used by any container (not just dangling ones)
+
+
+# docker run ubuntu sleep 1000 
+# docker run -d ubuntu sleep 1000 [ Running in detached mode ] 
+# docker attach containerID 
+
+Example - 
+# docker run timer 
+# docker run -d timer 
+# docker attach containerID 
+
+# docker run -p 8080:8080 jenkins 
+
+# docker run -p 8080:8080 -v /var/tmp:/var/jenkins_home jenkins 
+
+How many unique ports are published on this container (count each port only once even if it appears for IPv4 and IPv6)?
+
+
+~ ➜  docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS          PORTS                                                                                NAMES
+c1e2b46c3998   nginx:alpine   "/docker-entrypoint.…"   15 seconds ago   Up 12 seconds   0.0.0.0:3456->3456/tcp, :::3456->3456/tcp, 0.0.0.0:38080->80/tcp, :::38080->80/tcp   stoic_pike
+
+~ ➜  docker inspect c1e2b46c3998
+            "Ports": {
+                "3456/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "3456"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "3456"
+                    }
+                ],
+                "80/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "38080"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "38080"
+                    }
+                ]
+            },
+
+Use docker ps and look at the PORTS column. Count each port pair (host:container) only once
+
+~ ✖ docker ps 
+CONTAINER ID   IMAGE          COMMAND                  CREATED              STATUS              PORTS                                                                                NAMES
+c1e2b46c3998   nginx:alpine   "/docker-entrypoint.…"   About a minute ago   Up About a minute   0.0.0.0:3456->3456/tcp, :::3456->3456/tcp, 0.0.0.0:38080->80/tcp, :::38080->80/tcp   stoic_pike
+
+Which of the following ports are mapped on the container side (i.e., exposed inside the container)?
+
+In the PORTS column of docker ps, the format is hostPort->containerPort. The value after -> is the container (internal) port.
+
+~ ✖ docker ps 
+CONTAINER ID   IMAGE          COMMAND                  CREATED              STATUS              PORTS                                                                                NAMES
+c1e2b46c3998   nginx:alpine   "/docker-entrypoint.…"   About a minute ago   Up About a minute   0.0.0.0:3456->3456/tcp, :::3456->3456/tcp, 0.0.0.0:38080->80/tcp, :::38080->80/tcp   stoic_pike
+
+Which of the below ports are published on Host?
+
+
+~ ➜  docker inspect c1e2b46c3998
+            "Ports": {
+                "3456/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "3456"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "3456"
+                    }
+                ],
+                "80/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "38080"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "38080"
+                    }
+                ]
+            },
+
+# docker run -d -p 38282:8080  --name=blue-app kodekloud/simple-webapp:blue 
+59b3385d146a8a9497482a74d5c3efc9590da6239dcec0c4321c4933a84044f5 
+
+38282  --> Host Port 
+8080 --> Container Port 
+
+
+
+docker tag my-first-image <your-username>/my-first-image:v1.0
+docker push <your-username>/my-first-image:v1.0
+
+
+How to Create my own Image ?
+
+
+• Starting with an operating system (e.g., Ubuntu)
+• Updating package repositories via APT
+• Installing required dependencies using APT
+• Installing Python packages with pip
+• Copying your application's source code to a target directory (for example, /opt)
+• Launching the Flask web server
+
+• https://github.com/mmumshad/simple-webapp-flask/blob/master/Dockerfile 
+# vim Dockerfile
+FROM Ubuntu ### which image you want to use - docker.io/library/ubuntu:latest 
+RUN apt-get update  
+RUN apt update 
+RUN apt-get install -y python
+RUN pip install flask flask-mysql 
+WORKDIR /opt 
+COPY . /opt/source-code
+ENTRYPOINT FLASK_APP=/opt/source-code/app.py flask run 
+
+docker build . -t tamesh/myflaskapp:v2 
+ tamesh - docker a/c
+myflaskapp= aplication name 
+V2 - tag 
+
+
+Environment Variable - 
+
+docker run -e app_color=blue simple-webapp-color 
+
+If we want to run the below command [1]  , we can make this permanent in docker file - 
+
+[1] # docker run ubuntu sleep 5 
+
+
+To make it permanent - 
+
+FROM Ubuntu 
+
+CMD   ["sleep","5"]
+
+
+If we don't want to use the sleep option always , want to run the below command [2] - 
+ 
+[2 # ]docker run ubuntu-sleeper 10 
+
+FROM Ubuntu 
+
+ENTRYPOINT ["sleep"]
+
+If we  want to hard code to sleep for 5 secs as well as we want to use different sleep value - 
+
+[3] # docker run ubuntu-sleeper 
+[4]  # docker run ubuntu-sleeper  100  
+
+FROM Ubuntu 
+
+ENTRYPOINT ["sleep"]
+CMD ["5"]
+
+If we  want  use different version of sleep such as sleep2.0 
+[5] # docker run ubuntu-sleeper  --entrypoint sleep2.0  ubuntu-sleeper 10 
+
+
+
+FROM Ubuntu 
+
+ENTRYPOINT ["sleep"]
+CMD ["5"]
+
+Docker Compose is a tool that helps you define, run, and manage multi-container Docker applications easily.
+
+docker compose up        # Start services
+docker compose down      # Stop and remove services
+docker compose ps        # List running containers
+docker compose logs      # View logs
+
+m
+
+
+
+
+
+
+
+
+Voting app link - https://github.com/dockersamples/example-voting-app 
+
+
+
+ ✅  Difference b/n Docker and VM? 
+
+VM virtualizes the h/w, Runs a full guest OS on top of the hypervisor.  The images huge in size / heavier [ in Gbs] Slow to start , use lot of resources , It is h/w level isolation  
+
+Docker virtualises the OS , Shares the Host OS  kernel & it packages the application and its dependencies. Hence, They are light weight , bootup fast , sizes in mb , process level isolation , Uses less resource 
+
+ ✅  Explain the architecture of Docker 
+
+Docker consists of Docker docker file , docker image , docker container , docker registry ,   docker Engine [ consists of Docker cli or docker client  Rest API, docker daemon ] , docker volume & docker networks 
+
+Docker - Docker is a platform that builds, package and run application inside the containers
+
+Docker File - It contains  textual instructions using which container images are created. 
+
+Docker Image -It is a read-only template  using which Containers are created. Contains apps , binaries , libraries etc for an application to run as a container 
+
+Docker Container - It is the running instance of docker image . It is ephermal, Mutable and Isolated  
+
+Docker Registry - Place/ hub where images are stored e.g docker hub 
+
+Docker Engine - Component that powers docker. Contains Docker CLI / ,  Rest API. ,  docker daemon  
+
+
+• Docker CLI: Acts as the dashboard, letting you issue commands.
+• REST API: Translates CLI commands (e.g., docker run) into HTTP requests for the Docker Daemon. This enables automation and integration with external tools.
+• Docker Daemon: The “engine” that handles pulling images, building containers, and other core functions.
+
+
+• The Docker Daemon is the core of Docker.IT - 
+• Builds images
+• Runs containers
+• Manages networks and volumes
+
+
+Docker Network -  Provides networking. Allow container to container  & container to host networking 
+
+Docker Volume- Mechanism to store and persist data  generated by container outside containers filesystem 
+• 
+
+ ✅ How to persist data across container restarts ?? 
+We can persist data in docker using docker volume or bind mounts 
+
+# docker volume create my_vol 
+
+# docker run -v  my_vol:/var/www/html --name=name container_image  
+Data in /var/www/html   is stored in  my_vol
+
+Alternative: Bind Mounts
+Bind mounts map a host directory directly into a container.
+docker run -v /host/data:/app/data my_image
+
+ ✅  How to check logs of a specific container?
+# docker logs container_name 
+
+ ✅ How to expose container to outside world ? 
+
+To expose a container to the outside world, you map the container port to a host port using the -p (publish) option when running the container.
+
+docker run -p 8080:80 my_image
+
+80 → Port inside the container
+8080 → Port on the host machine
+Access the app via: http://localhost:8080
+
+ ✅ What is docker-compose? Its usages ?
+
+Docker Compose is a tool for managing and running multi-container Docker applications. Instead of starting containers individually with multiple docker run commands, Docker Compose allows you to manage them together using a single configuration file.
+
+docker-compose up/down  
+docker-compose.yaml 
+
+
+
+
+
+• Simplifies Multi-Container Setup
+If your application needs multiple components (e.g., a web server, database, cache), you can define them in one file and start them together.
+• Environment Consistency
+The same configuration works across development, testing, and production environments.
+• Networking Made Easy
+Compose automatically creates a network for your services so they can communicate by name.
+• Reusable Configurations
+You can version-control the docker-compose.yml file and share it with your team.
+• Scaling
+You can easily scale services up or down using: docker-compose up
+
+✅ What is docker file ? 
+You It contains textual instructions of how docker image can be created 
+
+# vim Dockerfile
+FROM Ubuntu  ### image to be used 
+RUN apt-get update   ## Run for commands to run 
+RUN apt update 
+RUN apt-get install -y python
+RUN pip install flask flask-mysql 
+WORKDIR /opt  ### Working Directory 
+COPY/ADD  . /opt/source-code
+ENTRYPOINT FLASK_APP=/opt/source-code/app.py flask run 
+
+
+✅  How resources allocation works for containers?
+
+1. CPU Allocation
+docker run --cpu-shares=512 myapp
+docker run --cpus="2" myapp   # Max
+
+2. Memory Allocation
+docker run --memory="512m"
+
+3. Isolation & Enforcement
+	• Namespaces: Isolate processes, network, mounts, etc.
+
+You can set resource limits in docker-compose.yml:
+
+version: '3.8'
+services:
+  app:
+    image: myapp
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+``
+
+
+✅ Key Benefits
+	• Prevents one container from hogging resources.
+	• Enables predictable performance.
+	• Helps in multi-tenant environments.
+
+
+✅ Docker Bloating? 
+Docker bloating is when containers carry unnecessary baggage, making them heavier, slower, and more expensive than they need to be.
+
+Docker bloating means your Docker images or containers become much bigger than they need to be, which wastes disk space, slows builds, and makes deployments heavier.
+
+
+
+Common causes
+	• Using large base images (e.g., ubuntu instead of alpine)
+	• Installing build tools (compilers, package managers) that aren’t removed afterward
+	• Copying unnecessary files (logs, docs, .git folders)
+	• Layer buildup from poorly ordered Dockerfile commands
+	• Not cleaning package caches after installs
