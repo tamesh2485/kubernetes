@@ -1,0 +1,82 @@
+ReplicationController  , ReplicaSet & Deployment 
+  If a pod fails, there is no self healing properties. Thats when we started to place pods under controllers such as ReplicaSet , ReplicationController & deployment
+
+
+ReplicationController  -  
+Manages Pod Replication. Ensures desired number of pods are running. It completely works on the mentioned label in the pod. It is the older version of ReplicaSet 
+
+Note- It is the original method of Self Healing property  
+What is a ReplicationController?
+
+* Ensures a specified number of pod replicas are running at any given time.
+* Any pod with matching labels becomes part of the rc, regardless of how it was created.
+
+ How to Label a Pod -   # k run nginx —image=nginx:1.19 -l app=nginx   
+📌 What Is a ReplicationController?
+A ReplicationController is a Kubernetes object that:
+* ensures a specified number of Pod replicas are always running
+* automatically replaces Pods that crash or are deleted
+* ensures the system always matches the user’s desired state
+
+
+📌 Why ReplicationController is Deprecated (Practically)
+Although still technically supported, the Kubernetes community has largely moved on because:
+❌ Only supports equality-based selectors
+Not flexible enough for modern deployments.
+❌ No rolling updates
+You would have to manually delete old Pods and apply new ones.
+❌ Doesn’t support modern Kubernetes patterns
+Deployments, ReplicaSets, StatefulSets, DaemonSets are preferred.
+✔️ Deployments fully replace RC functionality
+Deployments:
+* manage ReplicaSets
+* handle rollouts/rollbacks
+* support surge strategies
+* scale more efficiently
+  
+ReplicationSet  - 
+  A ReplicaSet (RS) is a Kubernetes object that guarantees a stable set of replica Pods.
+It makes sure that “N number of Pods are running, no matter what.” 
+It Doesn’t support Rolling Update/ Rollback .  We have more options such as matchLabels / matchExpressions where we can use in/not In / Exists / DoesNotExist  features  
+* ReplicaSet is an improved version of ReplicationController.
+* It supports set-based selectors, providing more flexibility in managing pods.
+* ReplicaSets are often managed by Deployments, which add advanced capabilities.
+
+
+Deployment - 
+
+A Deployment sits on top of ReplicaSet. It provides rollingUpdate/ rollback .  
+
+Equality-Based vs Set-Based Selectors
+
+Selector Type	Supported By	Description
+Equality-Based	rc, rs, Deployment	Matches pods where the label key equals a specific value. (app: nginx)
+Set-Based	rs, Deployment	Matches pods based on conditions (In, NotIn, Exists, DoesNotExist).
+
+
+
+# kubectl annotate deployments.apps nginx-deployment kubernetes.io/change-cause="Upgraded nginx 1.19 to 1.20"  Important Kubernetes Deployment Commands
+ 	•	Create a deployment Imperatively: kubectl create deployment nginx-deployment --image=nginx:1.19
+* List all deployments: kubectl get deployments
+* Describe a deployment: kubectl describe deployment nginx-deployment
+* Update deployment image: kubectl set image deployment/nginx-deployment nginx-container=nginx:1.20
+* Scale deployment replicas: kubectl scale deployment/nginx-deployment --replicas=5
+* View rollout history: kubectl rollout history deployment/nginx-deployment
+* Annotate a deployment: kubectl annotate deployment nginx-deployment kubernetes.io/change-cause="Upgraded nginx 1.19 to 1.20"
+* Rollback to a previous revision: kubectl rollout undo deployment/nginx-deployment --to-revision=1
+* Edit a deployment: kubectl edit deployment <deployment_name>
+* Get deployment manifest in YAML format: kubectl get deployment <deployment_name> -o yaml
+* Delete a deployment: kubectl delete deployment nginx-deployment
+
+
+5. Key Differences Between rc, rs, and Deployments
+
+Feature	ReplicationController (rc)	ReplicaSet (rs)	Deployment
+Selectors	Equality-based only	Equality and set-based	Equality and set-based
+Updates	Manual	Manual	Automated (rolling updates)
+Scaling	Manual or imperative	Manual or imperative	Declarative and automated
+Use Case	Legacy workloads	Modern workloads	Advanced workloads with CI/CD
+
+To delete a ReplicaSet/RC but keep its Pods running, you must orphan the Pods so they are not deleted along with the ReplicaSet/RC. -  
+kubectl delete rs <rs-name> --cascade=orphan
+kubectl delete rc <rc-name> --cascade=orphan
